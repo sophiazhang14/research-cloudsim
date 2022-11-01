@@ -547,9 +547,6 @@ public class Cloudlet {
          */
         public double emissions = 0;
 
-        /**
-         *
-         */
     }
     // ////////////////////// End of Internal Class //////////////////////////
 
@@ -1488,6 +1485,7 @@ public class Cloudlet {
     }
 
     /**
+     * @MARKER
      * Gets the total cost of processing or executing this Cloudlet
      * <tt>Processing Cost = input data transfer + processing cost + output
      * transfer cost</tt> .

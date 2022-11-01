@@ -755,12 +755,18 @@ public class Vm {
 		return getMOER() * getEnergy();
 	}
 
+	/**
+	 * Get price in $/hour
+	 *
+	 * @return
+	 */
+
 	public double getPrice() {
 		return -0.0038 + 0.0468 * numberOfPes + 0.0017 * ram / 1000.0;
 	}
 
 	/**
-	 * Get cost in $/hour
+	 * Get total cost in $
 	 *
 	 * @return
 	 */
@@ -768,6 +774,12 @@ public class Vm {
 		return getPrice() * (end - start) / 3600;
 	}
 
+	/**
+	 *
+	 * Get wasted money in $
+	 *
+	 * @return
+	 */
 	public double getWaste() {
 		return getCost() * (1 - percentUtilization / 100);
 	}
