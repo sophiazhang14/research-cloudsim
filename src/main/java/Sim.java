@@ -17,13 +17,15 @@ public class Sim {
             COMMA_DELIMITER = ",";
 
     // file path/name constants
+    // all files listed are located at "cloudsim/[filename]"
     private static final String
-            //in
-            shortlist_path = "vmtable_preprocessed_short.csv", /**note: if you wish to use a different sized version of the shortlist, you must change this path*/
-            moer_path = "CAISO_NORTH_2022-04_MOER_T.csv", /**note: if you wish to use a different .csv, you must change this path*/
-            //out
+            //input files
+            shortlist_path = "vmtable_preprocessed_short.csv", /*note: if you wish to use a different sized version of the shortlist, you must change this path*/
+            moer_path = "CAISO_NORTH_2022-04_MOER_T.csv", /*note: if you wish to use a different .csv, you must change this path*/
+            //output files
             sim_path = "sim.csv",
-            sim_with_algo_path = "sim_algo.csv";
+            sim_with_algo_path = "sim_algo.csv",
+            svmlist_path = "simulated_vms.csv";
 
     // lists
     private static List<Cloudlet> cloudletList;
@@ -145,6 +147,10 @@ public class Sim {
         br.close();
     }
 
+    /**
+     * initialize data: CloudSim, datacenters, broker, VMs, MOER.
+     * (calls init_MOER + init_VMs + init_datacenters)
+     */
     private static void init_data() {
         vmlist = new ArrayList<>();
         cloudletList = new ArrayList<>();
@@ -172,7 +178,7 @@ public class Sim {
         }
         catch (Exception ex) // data initialization from .csv failed somehow
         {
-            System.out.println(ex);
+            ex.printStackTrace();
         }
 
         //submit vm list to the broker
@@ -210,11 +216,11 @@ public class Sim {
     }
 
     /**
-     * Here, we use apply first algorithm (which shows a faster runtime than the second method) mentioned in paper: approach using intersections (AUI).
+     * Here, we apply first algorithm (which shows a faster runtime than the second method) mentioned in paper: approach using intersections (AUI).
      *      For refrence: https://www.overleaf.com/project/631366e0dd56804a99c1de8a
      * This algorithm will adjust the start and end times of each vm such that they are moer-efficient (running at time lower MOER).
      *
-     * @todo may develop a hybrid algorithm between AUI & AUMA to find a compromise between runtime and moer-efficiency.
+     * @todo may develop a hybrid algorithm between AUI & AUMA to find a compromise between runtime and moer-efficiency (later).
      */
     private static void algoRun()
     {
@@ -236,14 +242,17 @@ public class Sim {
 
         try
         {
-            printVMList(vmlist);
-            printCloudletList(newList, outputFileName);
+            FileOutputStream vmstream = new FileOutputStream(svmlist_path);
+            printVMList(vmlist, vmstream);
+            vmstream.close();
+            FileOutputStream fileOutputStream = new FileOutputStream(outputFileName);
+            printCloudletList(newList, fileOutputStream);
+            fileOutputStream.close();
         } catch(Exception ex)
         {
-            System.out.println(ex);
+            ex.printStackTrace();
         }
     }
-
 
     private static Datacenter createDatacenter(String name)
     {
@@ -316,8 +325,6 @@ public class Sim {
         return datacenter;
     }
 
-    //We strongly encourage users to develop their own broker policies, to submit vms and cloudlets according
-    //to the specific rules of the simulated scenario
     private static DatacenterBroker createBroker()
     {
 
@@ -336,21 +343,22 @@ public class Sim {
     /**
      * Prints the Cloudlets' final states to a file
      *
-     * @param list  list of Cloudlets
-     * @param filename file name of output file
+     * @param list list of Cloudlets
+     * @param ostream output stream (file/console)
      */
-    private static void printCloudletList(List<Cloudlet> list, String filename) throws IOException
+    private static void printCloudletList(List<Cloudlet> list, OutputStream ostream) throws IOException
     {
-        FileOutputStream fileOutputStream = new FileOutputStream(filename);
-        Log.setOutput(fileOutputStream);
+        OutputStream prevOStream = Log.getOutput();
+        Log.setOutput(ostream);
 
         int size = list.size();
         Cloudlet cloudlet;
 
         Log.formatLine(
-                "%-13s, %-13s, %-14s, %-13s, %-17s, %-17s, %-17s, %-17s",
-                "Cloudlet ID",
+                "%-13s, %-13s, %-13s, %-14s, %-13s, %-17s, %-17s, %-17s, %-17s",
                 "STATUS",
+                "Cloudlet ID",
+                "User ID",
                 "Datacenter ID",
                 "VM ID",
                 "Run Length (sec)",
@@ -361,11 +369,12 @@ public class Sim {
         DecimalFormat dft = new DecimalFormat("###.###");
         for (Cloudlet value : list) {
             cloudlet = value;
-            Log.format("%-13d", cloudlet.getCloudletId());
+            Log.format("%-13s", (cloudlet.getStatus() == Cloudlet.SUCCESS) ? "SUCCESS" : "FAIL");
 
             Log.formatLine(
-                    ", %-13s, %-14d, %-13d, %-17s, %-17s, %-17s, %-17s",
-                    (cloudlet.getStatus() == Cloudlet.SUCCESS) ? "SUCCESS" : "FAIL",
+                    ", %-13s, %-13s, %-14s, %-13s, %-17s, %-17s, %-17s, %-17s",
+                    cloudlet.getCloudletId(),
+                    cloudlet.getUserId(),
                     cloudlet.getResourceId(),
                     cloudlet.getVmId(),
                     dft.format(cloudlet.getActualCPUTime()),
@@ -373,12 +382,32 @@ public class Sim {
                     dft.format(cloudlet.getFinishTime()),
                     dft.format(cloudlet.getTotalEmissions()));
         }
-        fileOutputStream.close();
-        Log.setOutput(null);
+
+        Log.setOutput(prevOStream);
     }
 
-    private static void printVMList(List<Vm> list)
+    /**
+     * Prints the VMs that were simulated to a file
+     * @param list list of VMs
+     * @param ostream output stream (file/console)
+     */
+    private static void printVMList(List<Vm> list, OutputStream ostream)
     {
-        for(Vm vm: list) System.out.println(vm);
+        OutputStream prevOStream = Log.getOutput();
+        Log.setOutput(ostream);
+        Log.formatLine("%-14s, %-12s, %-12s, %-14s, %-18s, %-16s, %-14s, %-14s", "vm id (in sim)", "user id", "ram (GB)", "num CPU", "power (watt)", "avg. util (%)", "start (sec)", "end (sec)");
+        for(Vm vm : list)
+        {
+            Log.formatLine("%-14s, %-12s, %-12s, %-14s, %-18s, %-16s, %-14s, %-14s",
+                    vm.getId(),
+                    vm.getUserId(),
+                    vm.getRam() / 1000,
+                    vm.getNumberOfPes(),
+                    String.format("%.2f", vm.getPower()),
+                    String.format("%.2f", vm.getPercentUtilization()),
+                    vm.getTime()[0],
+                    vm.getTime()[1]);
+        }
+        Log.setOutput(prevOStream);
     }
 }

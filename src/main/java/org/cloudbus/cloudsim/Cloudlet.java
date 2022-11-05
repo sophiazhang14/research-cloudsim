@@ -1681,33 +1681,40 @@ public class Cloudlet {
 
 
 
-    /**----------------------  CUSTOM METHODS BELOW  --------------------------
-     * -------------------------------  ...  ----------------------------------
+    /*----------------------  CUSTOM METHODS BELOW  --------------------------
+      -------------------------------  ...  ----------------------------------
      */
 
 
-
-
-
+    /**
+     * Gets the start time (sec) of the Cloudlet's execution.
+     *
+     * @return
+     */
     public int getCStart(){return cstart;}
 
 
-    /** CUSTOM.
+    /**
      * Sets the emissions so far (for this datacenter)
      * */
     public void finalizeEmissions(Vm vm)
     {
+        if(status != Cloudlet.SUCCESS)
+        {
+            Log.printLine(CloudSim.clock() + ": Cloudlet #" + getCloudletId() + " failed to finalize emissions due to incomplete execution");
+            return;
+        }
         final Resource res = resList.get(index);
         res.emissions = vm.getCarbon();
+        Log.printLine(CloudSim.clock() + ": Cloudlet #" + getCloudletId() + " finalized emissions");
     }
 
     /**
-     * CUSTOM.
      * Gets the total emissions when this Cloudlet is run.
      * We will add emissions in *each* of the Resource data in 'resList'.
      * Why do we have a list of Resources in the first place:
      *      This means that if we run parts of the Cloudlet at different datacenters/locations, then we can store emissions that are specific to the MOER for each datacenter.
-     *      (this is in case we decide to relocate across space, and not only time).
+     *      (this is in case we decide, in the future, to relocate across space, and not only time).
      * @return
      */
     public double getTotalEmissions()

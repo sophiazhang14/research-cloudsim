@@ -697,13 +697,17 @@ public class Vm {
 
 
 
-	/**----------------------  CUSTOM METHODS BELOW  --------------------------
+	/*----------------------  CUSTOM METHODS BELOW  --------------------------
 	 * -------------------------------  ...  ----------------------------------
 	 */
 
 
 
 
+
+	public int[] getTime() {return new int[]{start, end};}
+
+	public double getPercentUtilization() {return percentUtilization;}
 
 	/**
 	 * Gets the power (watt) of this VM.
@@ -760,7 +764,6 @@ public class Vm {
 	 *
 	 * @return
 	 */
-
 	public double getPrice() {
 		return -0.0038 + 0.0468 * numberOfPes + 0.0017 * ram / 1000.0;
 	}
@@ -775,7 +778,6 @@ public class Vm {
 	}
 
 	/**
-	 *
 	 * Get wasted money in $
 	 *
 	 * @return
@@ -804,4 +806,5 @@ public class Vm {
 				"start & end: (" + start + ", " + end + ")");
 		return out;
 	}
+
 }
