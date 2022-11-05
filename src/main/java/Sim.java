@@ -48,6 +48,11 @@ public class Sim {
     private static double carbon;
     private static double waste;
 
+    // each of the following are updated once
+    // these contain the carbon and waste produced by their corresponding simulation, indicated by their name.
+    private static double[] noAlg_dat;
+    private static double[] AUI_dat;
+
     /**
      * Initialize datacenter(s).
      */
@@ -220,38 +225,44 @@ public class Sim {
             return;
         }
 
-        Log.printLine("|--------------SIMULATION WITHOUT ALGORITHM STARTS HERE--------------|");
+        noAlg_dat = runCycle("No Algorithm", () -> {}, sim_path, svmlist_path);
+        AUI_dat = runCycle("Approach Using Intersections (AUI)", Sim::runAUI, sim_with_AUI_path, svmlist_with_AUI_path);
+
+    }
+
+    /**
+     * Runs one cycle of the program.
+     * One cycle includes:
+     *  initialization of the cloud simulation,
+     *  **execution of carbon+waste-saving algorithm**,
+     *  execution of CloudSim simulation,
+     *  outputting results+data to files and console.
+     *
+     * @param name the name of the simulation
+     * @param save_carbon **the Runnable refrencing the carbon-saving algorithm function**
+     * @param sp path to the output file to contain cloudlets' final states
+     * @param svmlp path to the output file to contain adjusted vms
+     * @return returns an array: {[carbon that was emitted (lbs CO2)], [wasted money ($)]}
+     */
+    private static double[] runCycle(String name, Runnable save_carbon, String sp, String svmlp)
+    {
+        Log.print("\n\n\n\n\n");
+        Log.printLine("|--------------SIMULATION WITH \'" + name.toUpperCase() +"\' STARTS HERE--------------|");
         Log.print("\n\n\n\n\n");
 
-        /* Initialize refrences, csv data, cloudSim, brokers, etc...
+
+        /* Initialize refrences, csv data, cloudSim, brokers, etc... (again bc we are starting/restarting)
+         * ALSO, run our MOER/CO2-saving algorithm after initialization of vms from input csv! (this will modify start-end times of VM runtimes)
          */
-        init_data(() -> {});
-
-        /* Run the cloud simulation using original start-end times.
-         * Writes cloudlet results to 'sim.csv'
-         * Writes vms that were simulated to 'simulated_vms.csv'*/
-        simRun(sim_path, svmlist_path);
-        double carbon_without_algorithm = carbon,
-                waste_without_algorithm = waste;
-        printResults("No Algorithm");
-
-        Log.print("\n\n\n\n\n");
-        Log.printLine("|--------------SIMULATION WITH AUI STARTS HERE--------------|");
-        Log.print("\n\n\n\n\n");
-
-
-        /* Initialize refrences, csv data, cloudSim, brokers, etc... (again bc we are restarting)
-         * Then, run our MOER/CO2-saving algorithm! (this will modify start-end times of VM runtimes)
-         */
-        init_data(Sim::runAUI);
+        init_data(save_carbon);
 
         /* Re-run the cloud simulation using start-end times that were adjusted by our algorithm.
-         * Writes new cloudlet results to 'sim_after_AUI.csv'
-         * Writes vms (with now adjusted times) that were simulated to 'simulated_vms_after_AUIrithm.csv'*/
-        simRun(sim_with_AUI_path, svmlist_with_AUI_path);
-        double carbon_with_AUI = carbon,
-                waste_with_AUI = waste;
-        printResults("Approach Using Intersections (AUI)");
+         * Writes new cloudlet results to file
+         * Writes vms (with now adjusted times) that were simulated to file
+         */
+        simRun(sp, svmlp);
+        printResults(name);
+        return new double[]{carbon, waste};
     }
 
     private static void simRun(String cloudletFN, String vmFN)
@@ -281,9 +292,9 @@ public class Sim {
     }
 
     /**
-     * Here, we apply first algorithm (which shows a faster runtime than the second method) mentioned in paper: approach using intersections (AUI).
+     * Here, we apply first carbon-saving algorithm (which shows a faster runtime than the second method) mentioned in paper: approach using intersections (AUI).
      *      For refrence: https://www.overleaf.com/project/631366e0dd56804a99c1de8a
-     * This algorithm will adjust the start and end times of each vm such that they are moer-efficient (running at time lower MOER).
+     * This algorithm will adjust the start and end times of each vm such that they are moer-efficient (running at time with lower MOER).
      *
      * @todo may develop a hybrid algorithm between AUI & AUMA to find a compromise between runtime and moer-efficiency (later).
      */
@@ -535,6 +546,11 @@ public class Sim {
      */
     private static void printResults(String algName)
     {
-        System.out.print(algName + ":\nCarbon: " + carbon + " lbs CO2\nMoney wasted by user: $" + waste + "\n\n");
+        System.out.print(algName + ":\n" +
+                "Carbon: " + carbon + " lbs CO2\n" +
+                "Carbon Saved: " + ((noAlg_dat != null) ? (noAlg_dat[0] - carbon) : 0.0) +" lbs CO2\n" +
+                "Money wasted by user: $" + waste + "\n" +
+                "Money saved with waste-reduction: $" + ((noAlg_dat != null) ? (noAlg_dat[1] - waste) : 0.0) +
+                "\n\n");
     }
 }
