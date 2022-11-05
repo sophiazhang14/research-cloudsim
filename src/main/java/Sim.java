@@ -30,6 +30,8 @@ public class Sim {
             svmlist_path = "simulated_vms.csv",
             svmlist_with_AUI_path = "simulated_vms_after_AUI.csv";
 
+    private static final DecimalFormat dft = new DecimalFormat("###.###");
+
     private static final int numVMs = 1000;
 
     // lists
@@ -241,8 +243,7 @@ public class Sim {
         /* Initialize refrences, csv data, cloudSim, brokers, etc... (again bc we are restarting)
          * Then, run our MOER/CO2-saving algorithm! (this will modify start-end times of VM runtimes)
          */
-        init_data(Sim::algoRun);
-        algoRun();
+        init_data(Sim::runAUI);
 
         /* Re-run the cloud simulation using start-end times that were adjusted by our algorithm.
          * Writes new cloudlet results to 'sim_after_AUI.csv'
@@ -286,7 +287,7 @@ public class Sim {
      *
      * @todo may develop a hybrid algorithm between AUI & AUMA to find a compromise between runtime and moer-efficiency (later).
      */
-    private static void algoRun()
+    private static void runAUI()
     {
         // TODO find suitibal moer threshold
         final int moer_thresh = 800;
@@ -482,7 +483,6 @@ public class Sim {
                 "Carbon Emitted (lbs)",
                 "Wasted Money ($)");
 
-        DecimalFormat dft = new DecimalFormat("###.###");
         for (Cloudlet value : list) {
             cloudlet = value;
             Log.format("%-13s", (cloudlet.getStatus() == Cloudlet.SUCCESS) ? "SUCCESS" : "FAIL");
@@ -535,6 +535,6 @@ public class Sim {
      */
     private static void printResults(String algName)
     {
-        System.out.print(algName + ":\nCarbon: " + carbon + "\nWaste: " + waste + "\n\n");
+        System.out.print(algName + ":\nCarbon: " + carbon + " lbs CO2\nMoney wasted by user: $" + waste + "\n\n");
     }
 }
