@@ -1,6 +1,15 @@
-import com.sun.xml.internal.bind.v2.TODO;
+/*
+
+defs:
+waste ($): money wasted from unused VM cpu cores (from 1 simulation)
+carbon/carbon emissions (lbs CO2): carbon emitted due to execution of all Cloudlets (from 1 simulation).
+
+ */
+
+
+
+
 import org.cloudbus.cloudsim.*;
-import org.cloudbus.cloudsim.Vm;
 import org.cloudbus.cloudsim.core.CloudSim;
 import org.cloudbus.cloudsim.provisioners.BwProvisionerSimple;
 import org.cloudbus.cloudsim.provisioners.PeProvisionerSimple;
@@ -32,7 +41,7 @@ public class Sim {
             svmlist_path = "simulated_vms.csv",
             svmlist_with_AUI_path = "simulated_vms_after_AUI.csv";
 
-    private static final DecimalFormat dft = new DecimalFormat("##############0.00");
+    private static final DecimalFormat dft = new DecimalFormat("##############0.###");
 
     private static final int numVMs = 1000;
 
