@@ -1,3 +1,4 @@
+import com.sun.xml.internal.bind.v2.TODO;
 import org.cloudbus.cloudsim.*;
 import org.cloudbus.cloudsim.Vm;
 import org.cloudbus.cloudsim.core.CloudSim;
@@ -8,6 +9,7 @@ import org.cloudbus.cloudsim.provisioners.RamProvisionerSimple;
 import java.io.*;
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.function.Consumer;
 
 @SuppressWarnings("SpellCheckingInspection")
 public class Sim {
@@ -30,7 +32,7 @@ public class Sim {
             svmlist_path = "simulated_vms.csv",
             svmlist_with_AUI_path = "simulated_vms_after_AUI.csv";
 
-    private static final DecimalFormat dft = new DecimalFormat("###.###");
+    private static final DecimalFormat dft = new DecimalFormat("##############0.00");
 
     private static final int numVMs = 1000;
 
@@ -89,7 +91,7 @@ public class Sim {
      *
      * @throws IOException b/c reading from file...
      */
-    private static void init_VMs(Runnable adjuster) throws IOException
+    private static void init_VMs(Runnable carbon_adjuster, Consumer<Vm> waste_adjuster) throws IOException
     {
 
         //Fourth step: Create VMs
@@ -138,10 +140,13 @@ public class Sim {
                     MOER,
                     PMOER,
                     new CloudletSchedulerTimeShared());
+
+            waste_adjuster.accept(vm); // adjust this vm's resouces to reduce cost if possible
+
             vmlist.add(vm);
         }
 
-        adjuster.run();
+        carbon_adjuster.run(); // adjust all vms' start+end times to reduce moer if possible
 
         for(int i = 0; i < numVMs; i++)
         {
@@ -175,7 +180,7 @@ public class Sim {
      * initialize data: CloudSim, datacenters, broker, VMs, MOER.
      * (calls init_MOER + init_VMs + init_datacenters)
      */
-    private static void init_data(Runnable adjuster) {
+    private static void init_data(Runnable carbon_adjuster, Consumer<Vm> waste_adjuster) {
         vmlist = new ArrayList<>();
         cloudletList = new ArrayList<>();
         MOER = new ArrayList<>(); PMOER = new ArrayList<>();
@@ -197,7 +202,7 @@ public class Sim {
         broker = createBroker();
         try{
             init_MOER();
-            init_VMs(adjuster);
+            init_VMs(carbon_adjuster, waste_adjuster);
         }
         catch (Exception ex) // data initialization from .csv failed somehow
         {
@@ -225,8 +230,8 @@ public class Sim {
             return;
         }
 
-        noAlg_dat = runCycle("No Algorithm", () -> {}, sim_path, svmlist_path);
-        AUI_dat = runCycle("Approach Using Intersections (AUI)", Sim::runAUI, sim_with_AUI_path, svmlist_with_AUI_path);
+        noAlg_dat = runCycle("No Algorithm", () -> {}, (Vm vm) -> {}, sim_path, svmlist_path);
+        AUI_dat = runCycle("Approach Using Intersections (AUI)", Sim::runAUI, Sim::runWR, sim_with_AUI_path, svmlist_with_AUI_path);
 
     }
 
@@ -244,7 +249,7 @@ public class Sim {
      * @param svmlp path to the output file to contain adjusted vms
      * @return returns an array: {[carbon that was emitted (lbs CO2)], [wasted money ($)]}
      */
-    private static double[] runCycle(String name, Runnable save_carbon, String sp, String svmlp)
+    private static double[] runCycle(String name, Runnable save_carbon, Consumer<Vm> save_waste, String sp, String svmlp)
     {
         Log.print("\n\n\n\n\n");
         Log.printLine("|--------------SIMULATION WITH \'" + name.toUpperCase() +"\' STARTS HERE--------------|");
@@ -254,7 +259,7 @@ public class Sim {
         /* Initialize refrences, csv data, cloudSim, brokers, etc... (again bc we are starting/restarting)
          * ALSO, run our MOER/CO2-saving algorithm after initialization of vms from input csv! (this will modify start-end times of VM runtimes)
          */
-        init_data(save_carbon);
+        init_data(save_carbon, save_waste);
 
         /* Re-run the cloud simulation using start-end times that were adjusted by our algorithm.
          * Writes new cloudlet results to file
@@ -381,6 +386,16 @@ public class Sim {
         }
     }
 
+    /**
+     * Here, we apply waste-reduction on *one* given VM.
+     * @param vm the VM to be ajusted.
+     */
+    private static void runWR(Vm vm)
+    {
+        //TODO implement waste reduction
+
+    }
+
     private static Datacenter createDatacenter(String name)
     {
 
@@ -473,7 +488,8 @@ public class Sim {
      * @param list list of Cloudlets
      * @param ostream output stream (file/console)
      */
-    private static void printCloudletList(List<Cloudlet> list, OutputStream ostream) {
+    private static void printCloudletList(List<Cloudlet> list, OutputStream ostream)
+    {
         carbon = 0.0;
         waste = 0.0;
         OutputStream prevOStream = Log.getOutput();
@@ -547,10 +563,10 @@ public class Sim {
     private static void printResults(String algName)
     {
         System.out.print(algName + ":\n" +
-                "Carbon: " + carbon + " lbs CO2\n" +
-                "Carbon Saved: " + ((noAlg_dat != null) ? (noAlg_dat[0] - carbon) : 0.0) +" lbs CO2\n" +
-                "Money wasted by user: $" + waste + "\n" +
-                "Money saved with waste-reduction: $" + ((noAlg_dat != null) ? (noAlg_dat[1] - waste) : 0.0) +
+                "Carbon: " + dft.format(carbon) + " lbs CO2\n" +
+                "Carbon Saved: " + dft.format((noAlg_dat != null) ? (noAlg_dat[0] - carbon) : 0.0) +" lbs CO2\n" +
+                "Money wasted by user: $" + dft.format(waste) + "\n" +
+                "Money saved with waste-reduction: $" + dft.format((noAlg_dat != null) ? (noAlg_dat[1] - waste) : 0.0) +
                 "\n\n");
     }
 }
