@@ -17,11 +17,14 @@ public class Sim {
             COMMA_DELIMITER = ",";
 
     // file path/name constants
-    // all files listed are located at "cloudsim/[filename]"
+    // all files listed are located at "cloudsim\[filename]"
     private static final String
+
             //input files
-            shortlist_path = "vmtable_preprocessed_short.csv", /*note: if you wish to use a different sized version of the shortlist, you must change this path*/
-            moer_path = "CAISO_NORTH_2022-04_MOER_T.csv", /*note: if you wish to use a different .csv, you must change this path*/
+            shortlist_path = "vmtable_preprocessed_short.csv",
+            moer_path = "CASIO_NORTH_2019_APRIL.csv",
+            moer_predicted_path = "",
+
             //output files
             sim_path = "sim.csv",
             sim_with_algo_path = "sim_algo.csv",
@@ -30,7 +33,7 @@ public class Sim {
     // lists
     private static List<Cloudlet> cloudletList;
     private static List<Vm> vmlist;
-    // MOER data (index represents how many 5-minute intervals have passed since start of month, value represents MOER at that time)
+    // MOER data (index represents how many 5-minute intervals have passed since start of month, value represents MOER (CO2 lbs/MWh) at that time)
     private static List<Integer> MOER;
 
     // datacenter-related
@@ -61,7 +64,7 @@ public class Sim {
         while((line = br.readLine()) != null)
         {
             String[] values = line.split(COMMA_DELIMITER);
-            MOER.add((int)Double.parseDouble(values[5]));
+            MOER.add((int)Double.parseDouble(values[0]));
         }
 
         br.close();
@@ -224,8 +227,7 @@ public class Sim {
      */
     private static void algoRun()
     {
-        //TODO implement AUI here.
-
+        // TODO
     }
 
     private static void simRun(String outputFileName)
