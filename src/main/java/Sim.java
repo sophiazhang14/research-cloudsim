@@ -42,8 +42,9 @@ public class Sim {
     private static Datacenter[] datacenters;
     private static DatacenterBroker broker;
 
-    // carbon (is updated after each simulation)!
+    // carbon & waste (is updated after each simulation)!
     private static double carbon;
+    private static double waste;
 
     /**
      * Initialize datacenter(s).
@@ -227,9 +228,10 @@ public class Sim {
         /* Run the cloud simulation using original start-end times.
          * Writes cloudlet results to 'sim.csv'
          * Writes vms that were simulated to 'simulated_vms.csv'*/
-        double carbon_without_algorithm = simRun(sim_path, svmlist_path);
-        System.out.println("Carbon without using algorithm: " + carbon_without_algorithm);
-
+        simRun(sim_path, svmlist_path);
+        double carbon_without_algorithm = carbon,
+                waste_without_algorithm = waste;
+        printResults("No Algorithm");
 
         Log.print("\n\n\n\n\n");
         Log.printLine("|--------------SIMULATION WITH AUI STARTS HERE--------------|");
@@ -245,11 +247,13 @@ public class Sim {
         /* Re-run the cloud simulation using start-end times that were adjusted by our algorithm.
          * Writes new cloudlet results to 'sim_after_AUI.csv'
          * Writes vms (with now adjusted times) that were simulated to 'simulated_vms_after_AUIrithm.csv'*/
-        double carbon_with_AUI = simRun(sim_with_AUI_path, svmlist_with_AUI_path);
-        System.out.println("Carbon without using algorithm: " + carbon_with_AUI);
+        simRun(sim_with_AUI_path, svmlist_with_AUI_path);
+        double carbon_with_AUI = carbon,
+                waste_with_AUI = waste;
+        printResults("Approach Using Intersections (AUI)");
     }
 
-    private static double simRun(String cloudletFN, String vmFN)
+    private static void simRun(String cloudletFN, String vmFN)
     {
 
         // Sixth step: Starts the simulation
@@ -273,7 +277,6 @@ public class Sim {
         {
             ex.printStackTrace();
         }
-        return carbon;
     }
 
     /**
@@ -460,13 +463,14 @@ public class Sim {
      */
     private static void printCloudletList(List<Cloudlet> list, OutputStream ostream) {
         carbon = 0.0;
+        waste = 0.0;
         OutputStream prevOStream = Log.getOutput();
         Log.setOutput(ostream);
 
         Cloudlet cloudlet;
 
         Log.formatLine(
-                "%-13s, %-13s, %-13s, %-14s, %-13s, %-17s, %-17s, %-17s, %-17s",
+                "%-13s, %-13s, %-13s, %-14s, %-13s, %-17s, %-17s, %-17s, %-17s, %-17s",
                 "STATUS",
                 "Cloudlet ID",
                 "User ID",
@@ -475,7 +479,8 @@ public class Sim {
                 "Run Length (sec)",
                 "Start Time (sec)",
                 "Finish Time (sec)",
-                "Carbon Emitted (lbs)");
+                "Carbon Emitted (lbs)",
+                "Wasted Money ($)");
 
         DecimalFormat dft = new DecimalFormat("###.###");
         for (Cloudlet value : list) {
@@ -483,7 +488,7 @@ public class Sim {
             Log.format("%-13s", (cloudlet.getStatus() == Cloudlet.SUCCESS) ? "SUCCESS" : "FAIL");
 
             Log.formatLine(
-                    ", %-13s, %-13s, %-14s, %-13s, %-17s, %-17s, %-17s, %-17s",
+                    ", %-13s, %-13s, %-14s, %-13s, %-17s, %-17s, %-17s, %-17s, %-17s",
                     cloudlet.getCloudletId(),
                     cloudlet.getUserId(),
                     cloudlet.getResourceId(),
@@ -491,8 +496,10 @@ public class Sim {
                     dft.format(cloudlet.getActualCPUTime()),
                     dft.format(cloudlet.getExecStartTime()),
                     dft.format(cloudlet.getFinishTime()),
-                    dft.format(cloudlet.getTotalEmissions()));
+                    dft.format(cloudlet.getTotalEmissions()),
+                    dft.format(cloudlet.getTotalWaste()));
             carbon += cloudlet.getTotalEmissions();
+            waste += cloudlet.getTotalWaste();
         }
 
         Log.setOutput(prevOStream);
@@ -521,5 +528,13 @@ public class Sim {
                     vm.getTime()[1]);
         }
         Log.setOutput(prevOStream);
+    }
+
+    /**
+     * Prints the final results of a simulation to console
+     */
+    private static void printResults(String algName)
+    {
+        System.out.print(algName + ":\nCarbon: " + carbon + "\nWaste: " + waste + "\n\n");
     }
 }

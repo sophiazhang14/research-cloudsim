@@ -803,7 +803,7 @@ public class Vm {
 	 * @return
 	 */
 	private double getCost() {
-		return getPrice() * (end - start) / 3600;
+		return getPrice() * (end - start) / 3600.0;
 	}
 
 	/**

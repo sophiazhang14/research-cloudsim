@@ -484,6 +484,7 @@ public class ResCloudlet {
 	public void finalizeCloudlet(Vm vm) {
 		finalizeCloudlet();
 		cloudlet.finalizeEmissions(vm);
+		cloudlet.finalizeWaste(vm);
 	}
 
 	/**

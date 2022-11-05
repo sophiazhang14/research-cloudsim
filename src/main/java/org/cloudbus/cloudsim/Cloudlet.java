@@ -545,8 +545,12 @@ public class Cloudlet {
         /**
          * CUSTOM. The *total* CO2 emissions over the execution
          */
-        public double emissions = 0;
+        public double emissions = 0.0;
 
+        /**
+         * CUSTOM. The *total* waste ($ wasted) over the execution
+         */
+        public double waste = 0.0;
     }
     // ////////////////////// End of Internal Class //////////////////////////
 
@@ -1695,7 +1699,7 @@ public class Cloudlet {
 
 
     /**
-     * Sets the emissions so far (for this datacenter)
+     * Finalize the emissions for current Resource
      * */
     public void finalizeEmissions(Vm vm)
     {
@@ -1705,10 +1709,20 @@ public class Cloudlet {
     }
 
     /**
+     * Finalize the waste for current Resource
+     * */
+    public void finalizeWaste(Vm vm)
+    {
+        final Resource res = resList.get(index);
+        res.waste = vm.getWaste();
+        Log.printLine(CloudSim.clock() + ": Cloudlet #" + getCloudletId() + " finalized waste");
+    }
+
+    /**
      * Gets the total emissions when this Cloudlet is run.
      * We will add emissions in *each* of the Resource data in 'resList'.
      * Why do we have a list of Resources in the first place:
-     *      This means that if we run parts of the Cloudlet at different datacenters/locations, then we can store emissions that are specific to the MOER for each datacenter.
+     *      This means that if we run parts of the Cloudlet at different datacenters/locations, then we can store data that are specific to the MOER for each datacenter.
      *      (this is in case we decide, in the future, to relocate across space, and not only time).
      * @return
      */
@@ -1716,6 +1730,18 @@ public class Cloudlet {
     {
         double totEm = 0.0;
         for(Resource res : resList) totEm += res.emissions;
+        return totEm;
+    }
+
+    /**
+     * Gets the total waste when this Cloudlet is run.
+     * We will add waste in *each* of the Resource data in 'resList'.
+     * @return
+     */
+    public double getTotalWaste()
+    {
+        double totEm = 0.0;
+        for(Resource res : resList) totEm += res.waste;
         return totEm;
     }
 
