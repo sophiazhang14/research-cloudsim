@@ -64,6 +64,113 @@ public class Sim {
     private static double[] noAlg_dat;
     private static double[] AUI_dat;
 
+
+    //MAIN FUNCTION
+    public static void main(String[] args) {
+        FileOutputStream logStream;
+        try{
+            logStream = new FileOutputStream("simulation_logs.txt");
+            Log.setOutput(logStream);
+        }catch(Exception ex){
+            System.out.println("wtf");
+            return;
+        }
+
+        noAlg_dat = runCycle("No Algorithm", () -> {}, (Vm vm) -> {}, sim_path, svmlist_path);
+        AUI_dat = runCycle("Approach Using Intersections (AUI)", Sim::runAUI, Sim::runWR, sim_with_AUI_path, svmlist_with_AUI_path);
+
+    }
+
+
+    //------------Below are initialization functions------------//
+
+
+    private static Datacenter createDatacenter(String name)
+    {
+
+        // Here are the steps needed to create a PowerDatacenter:
+        // 1. We need to create a list to store
+        //    our machine
+        List<Host> hostList = new ArrayList<>();
+
+        // 2. A Machine contains one or more PEs or CPUs/Cores.
+        // In this example, it will have only one core.
+        List<Pe> peList = new ArrayList<>();
+
+        int mips = 100_000;
+
+        // 3. Create PEs and add these into a list.
+        peList.add(new Pe(0, new PeProvisionerSimple(mips))); // need to store Pe id and MIPS Rating
+
+        //4. Create Host with its id and list of PEs and add them to the list of machines
+        int hostId=0;
+        int ram = Integer.MAX_VALUE; //host memory (MB)
+        long storage = Integer.MAX_VALUE; //host storage
+        int bw = Integer.MAX_VALUE;
+
+        hostList.add(
+                new Host(
+                        hostId,
+                        new RamProvisionerSimple(ram),
+                        new BwProvisionerSimple(bw),
+                        storage,
+                        peList,
+                        new VmSchedulerTimeShared(peList)
+                )
+        ); // This is our machine
+
+
+        // 5. Create a DatacenterCharacteristics object that stores the
+        //    properties of a data center: architecture, OS, list of
+        //    Machines, allocation policy: time- or space-shared, time zone
+        //    and its price (G$/Pe time unit).
+        String arch = "x86";      // system architecture
+        String os = "Linux";          // operating system
+        String vmm = "Windows Hyper-V";
+        double time_zone = 10.0;         // time zone this resource located
+        double cost = 3.0;              // the cost of using processing in this resource
+        double costPerMem = 0.05;		// the cost of using memory in this resource
+        double costPerStorage = 0.001;	// the cost of using storage in this resource
+        double costPerBw = 0.0;			// the cost of using bw in this resource
+        LinkedList<Storage> storageList = new LinkedList<>();	//we are not adding SAN devices by now
+
+        DatacenterCharacteristics characteristics = new DatacenterCharacteristics(
+                arch, os, vmm, hostList, time_zone, cost, costPerMem, costPerStorage, costPerBw);
+
+
+        // 6. Finally, we need to create a PowerDatacenter object.
+        Datacenter datacenter = null;
+        try
+        {
+            datacenter = new Datacenter(
+                    name,
+                    characteristics,
+                    new VmAllocationPolicySimple(hostList),
+                    storageList,
+                    0);
+        } catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+
+        return datacenter;
+    }
+
+    private static DatacenterBroker createBroker()
+    {
+
+        DatacenterBroker broker;
+        try
+        {
+            broker = new DatacenterBroker("Broker");
+        } catch (Exception e)
+        {
+            e.printStackTrace();
+            return null;
+        }
+        return broker;
+    }
+
     /**
      * Initialize datacenter(s).
      */
@@ -229,20 +336,9 @@ public class Sim {
         for(int i = 0; i < vmlist.size(); i++) broker.bindCloudletToVm(cloudletList.get(i).getCloudletId(), vmlist.get(i).getId());
     }
 
-    public static void main(String[] args) {
-        FileOutputStream logStream;
-        try{
-            logStream = new FileOutputStream("simulation_logs.txt");
-            Log.setOutput(logStream);
-        }catch(Exception ex){
-            System.out.println("wtf");
-            return;
-        }
 
-        noAlg_dat = runCycle("No Algorithm", () -> {}, (Vm vm) -> {}, sim_path, svmlist_path);
-        AUI_dat = runCycle("Approach Using Intersections (AUI)", Sim::runAUI, Sim::runWR, sim_with_AUI_path, svmlist_with_AUI_path);
+    //------------Below are simulation functions-----------//
 
-    }
 
     /**
      * Runs one cycle of the program.
@@ -405,91 +501,9 @@ public class Sim {
 
     }
 
-    private static Datacenter createDatacenter(String name)
-    {
 
-        // Here are the steps needed to create a PowerDatacenter:
-        // 1. We need to create a list to store
-        //    our machine
-        List<Host> hostList = new ArrayList<>();
+    //-------------Below are output functions--------------//
 
-        // 2. A Machine contains one or more PEs or CPUs/Cores.
-        // In this example, it will have only one core.
-        List<Pe> peList = new ArrayList<>();
-
-        int mips = 100_000;
-
-        // 3. Create PEs and add these into a list.
-        peList.add(new Pe(0, new PeProvisionerSimple(mips))); // need to store Pe id and MIPS Rating
-
-        //4. Create Host with its id and list of PEs and add them to the list of machines
-        int hostId=0;
-        int ram = Integer.MAX_VALUE; //host memory (MB)
-        long storage = Integer.MAX_VALUE; //host storage
-        int bw = Integer.MAX_VALUE;
-
-        hostList.add(
-                new Host(
-                        hostId,
-                        new RamProvisionerSimple(ram),
-                        new BwProvisionerSimple(bw),
-                        storage,
-                        peList,
-                        new VmSchedulerTimeShared(peList)
-                )
-        ); // This is our machine
-
-
-        // 5. Create a DatacenterCharacteristics object that stores the
-        //    properties of a data center: architecture, OS, list of
-        //    Machines, allocation policy: time- or space-shared, time zone
-        //    and its price (G$/Pe time unit).
-        String arch = "x86";      // system architecture
-        String os = "Linux";          // operating system
-        String vmm = "Windows Hyper-V";
-        double time_zone = 10.0;         // time zone this resource located
-        double cost = 3.0;              // the cost of using processing in this resource
-        double costPerMem = 0.05;		// the cost of using memory in this resource
-        double costPerStorage = 0.001;	// the cost of using storage in this resource
-        double costPerBw = 0.0;			// the cost of using bw in this resource
-        LinkedList<Storage> storageList = new LinkedList<>();	//we are not adding SAN devices by now
-
-        DatacenterCharacteristics characteristics = new DatacenterCharacteristics(
-                arch, os, vmm, hostList, time_zone, cost, costPerMem, costPerStorage, costPerBw);
-
-
-        // 6. Finally, we need to create a PowerDatacenter object.
-        Datacenter datacenter = null;
-        try
-        {
-            datacenter = new Datacenter(
-                    name,
-                    characteristics,
-                    new VmAllocationPolicySimple(hostList),
-                    storageList,
-                    0);
-        } catch (Exception e)
-        {
-            e.printStackTrace();
-        }
-
-        return datacenter;
-    }
-
-    private static DatacenterBroker createBroker()
-    {
-
-        DatacenterBroker broker;
-        try
-        {
-            broker = new DatacenterBroker("Broker");
-        } catch (Exception e)
-        {
-            e.printStackTrace();
-            return null;
-        }
-        return broker;
-    }
 
     /**
      * Prints the Cloudlets' final states to a file
