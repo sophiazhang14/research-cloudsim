@@ -1699,11 +1699,6 @@ public class Cloudlet {
      * */
     public void finalizeEmissions(Vm vm)
     {
-        if(status != Cloudlet.SUCCESS)
-        {
-            Log.printLine(CloudSim.clock() + ": Cloudlet #" + getCloudletId() + " failed to finalize emissions due to incomplete execution");
-            return;
-        }
         final Resource res = resList.get(index);
         res.emissions = vm.getCarbon();
         Log.printLine(CloudSim.clock() + ": Cloudlet #" + getCloudletId() + " finalized emissions");

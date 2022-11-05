@@ -23,22 +23,27 @@ public class Sim {
             //input files
             shortlist_path = "vmtable_preprocessed_short.csv",
             moer_path = "CASIO_NORTH_2019_APRIL.csv",
-            moer_predicted_path = "",
 
             //output files
             sim_path = "sim.csv",
-            sim_with_algo_path = "sim_algo.csv",
-            svmlist_path = "simulated_vms.csv";
+            sim_with_AUI_path = "sim_after_AUI.csv",
+            svmlist_path = "simulated_vms.csv",
+            svmlist_with_AUI_path = "simulated_vms_after_AUI.csv";
+
+    private static final int numVMs = 1000;
 
     // lists
     private static List<Cloudlet> cloudletList;
     private static List<Vm> vmlist;
     // MOER data (index represents how many 5-minute intervals have passed since start of month, value represents MOER (CO2 lbs/MWh) at that time)
-    private static List<Integer> MOER;
+    private static List<Integer> MOER, PMOER;
 
     // datacenter-related
     private static Datacenter[] datacenters;
     private static DatacenterBroker broker;
+
+    // carbon (is updated after each simulation)!
+    private static double carbon;
 
     /**
      * Initialize datacenter(s).
@@ -58,13 +63,14 @@ public class Sim {
     {
         BufferedReader br = new BufferedReader(new FileReader(moer_path));
 
-        String line = ""; int currID = 0;
+        String line;
         br.readLine(); // flush the useless header line
 
         while((line = br.readLine()) != null)
         {
             String[] values = line.split(COMMA_DELIMITER);
             MOER.add((int)Double.parseDouble(values[0]));
+            PMOER.add((int)Double.parseDouble(values[1]));
         }
 
         br.close();
@@ -75,7 +81,7 @@ public class Sim {
      *
      * @throws IOException b/c reading from file...
      */
-    private static void init_VMs() throws IOException
+    private static void init_VMs(Runnable adjuster) throws IOException
     {
 
         //Fourth step: Create VMs
@@ -85,11 +91,11 @@ public class Sim {
         UtilizationModel utilizationModel = new UtilizationModelFull();
 
         // read data from vmtable.csv
-        String line = ""; int currID = 0;
+        String line;
         br.readLine(); // flush the useless header line
-        for(int i = 0; i < 100; i++)
+        for(int i = 0; i < numVMs; i++)
         {
-            if((line = br.readLine()) == null) break;
+            if ((line = br.readLine()) == null) break;
 
             String[] values = line.split(COMMA_DELIMITER);
             int
@@ -103,8 +109,7 @@ public class Sim {
                     bw = 1000, // bandwidth (using default value of 1000)
                     size = 10000, // idk what this size is specifically referring to
                     startTime = 300 * (int)(Double.parseDouble(values[0])),
-                    endTime = 300 * (int)(Double.parseDouble(values[1])),
-                    timeTot = (int)(Double.parseDouble(values[8]));
+                    endTime = 300 * (int)(Double.parseDouble(values[1]));
             double
                     avgUtil = Double.parseDouble(values[3]);
             String
@@ -123,11 +128,19 @@ public class Sim {
                     startTime,
                     endTime,
                     MOER,
+                    PMOER,
                     new CloudletSchedulerTimeShared());
             vmlist.add(vm);
+        }
+
+        adjuster.run();
+
+        for(int i = 0; i < numVMs; i++)
+        {
+            Vm currVm = vmlist.get(i);
 
             int pesNumber=1;
-            long length = (long) timeTot * mips;
+            long length = (long) (currVm.getTime()[1] - currVm.getTime()[0]) * (long) currVm.getMips();
             long fileSize = 300;
             long outputSize = 300;
 
@@ -141,7 +154,7 @@ public class Sim {
                             utilizationModel,
                             utilizationModel,
                             utilizationModel,
-                            startTime);
+                            currVm.getTime()[0]);
             cloudlet1.setUserId(brokerId);
 
             cloudletList.add(cloudlet1);
@@ -154,20 +167,19 @@ public class Sim {
      * initialize data: CloudSim, datacenters, broker, VMs, MOER.
      * (calls init_MOER + init_VMs + init_datacenters)
      */
-    private static void init_data() {
+    private static void init_data(Runnable adjuster) {
         vmlist = new ArrayList<>();
         cloudletList = new ArrayList<>();
-        MOER = new ArrayList<>();
+        MOER = new ArrayList<>(); PMOER = new ArrayList<>();
         datacenters = new Datacenter[100];
 
         // First step: Initialize the CloudSim package. It should be called
         // before creating any entities.
         int num_user = 1;   // number of cloud users
         Calendar calendar = Calendar.getInstance();
-        boolean trace_flag = false;  // mean trace events
 
         // Initialize the CloudSim library
-        CloudSim.init(num_user, calendar, trace_flag);
+        CloudSim.init(num_user, calendar, false);
 
         // Second step: Create Datacenters
         //Datacenters are the resource providers in CloudSim. We need at list one of them to run a CloudSim simulation
@@ -177,7 +189,7 @@ public class Sim {
         broker = createBroker();
         try{
             init_MOER();
-            init_VMs();
+            init_VMs(adjuster);
         }
         catch (Exception ex) // data initialization from .csv failed somehow
         {
@@ -196,41 +208,48 @@ public class Sim {
     }
 
     public static void main(String[] args) {
+        FileOutputStream logStream;
+        try{
+            logStream = new FileOutputStream("simulation_logs.txt");
+            Log.setOutput(logStream);
+        }catch(Exception ex){
+            System.out.println("wtf");
+            return;
+        }
+
+        Log.printLine("|--------------SIMULATION WITHOUT ALGORITHM STARTS HERE--------------|");
+        Log.print("\n\n\n\n\n");
 
         /* Initialize refrences, csv data, cloudSim, brokers, etc...
          */
-        init_data();
+        init_data(() -> {});
 
         /* Run the cloud simulation using original start-end times.
-         * Writes ouput to 'sim.csv'*/
-        simRun(sim_path);
+         * Writes cloudlet results to 'sim.csv'
+         * Writes vms that were simulated to 'simulated_vms.csv'*/
+        double carbon_without_algorithm = simRun(sim_path, svmlist_path);
+        System.out.println("Carbon without using algorithm: " + carbon_without_algorithm);
+
+
+        Log.print("\n\n\n\n\n");
+        Log.printLine("|--------------SIMULATION WITH AUI STARTS HERE--------------|");
+        Log.print("\n\n\n\n\n");
 
 
         /* Initialize refrences, csv data, cloudSim, brokers, etc... (again bc we are restarting)
          * Then, run our MOER/CO2-saving algorithm! (this will modify start-end times of VM runtimes)
          */
-        init_data();
+        init_data(Sim::algoRun);
         algoRun();
 
         /* Re-run the cloud simulation using start-end times that were adjusted by our algorithm.
-         * Writes output to 'sim_algo.csv'*/
-        simRun(sim_with_algo_path);
-
+         * Writes new cloudlet results to 'sim_after_AUI.csv'
+         * Writes vms (with now adjusted times) that were simulated to 'simulated_vms_after_AUIrithm.csv'*/
+        double carbon_with_AUI = simRun(sim_with_AUI_path, svmlist_with_AUI_path);
+        System.out.println("Carbon without using algorithm: " + carbon_with_AUI);
     }
 
-    /**
-     * Here, we apply first algorithm (which shows a faster runtime than the second method) mentioned in paper: approach using intersections (AUI).
-     *      For refrence: https://www.overleaf.com/project/631366e0dd56804a99c1de8a
-     * This algorithm will adjust the start and end times of each vm such that they are moer-efficient (running at time lower MOER).
-     *
-     * @todo may develop a hybrid algorithm between AUI & AUMA to find a compromise between runtime and moer-efficiency (later).
-     */
-    private static void algoRun()
-    {
-        // TODO
-    }
-
-    private static void simRun(String outputFileName)
+    private static double simRun(String cloudletFN, String vmFN)
     {
 
         // Sixth step: Starts the simulation
@@ -244,15 +263,106 @@ public class Sim {
 
         try
         {
-            FileOutputStream vmstream = new FileOutputStream(svmlist_path);
+            FileOutputStream vmstream = new FileOutputStream(vmFN);
             printVMList(vmlist, vmstream);
             vmstream.close();
-            FileOutputStream fileOutputStream = new FileOutputStream(outputFileName);
+            FileOutputStream fileOutputStream = new FileOutputStream(cloudletFN);
             printCloudletList(newList, fileOutputStream);
             fileOutputStream.close();
         } catch(Exception ex)
         {
             ex.printStackTrace();
+        }
+        return carbon;
+    }
+
+    /**
+     * Here, we apply first algorithm (which shows a faster runtime than the second method) mentioned in paper: approach using intersections (AUI).
+     *      For refrence: https://www.overleaf.com/project/631366e0dd56804a99c1de8a
+     * This algorithm will adjust the start and end times of each vm such that they are moer-efficient (running at time lower MOER).
+     *
+     * @todo may develop a hybrid algorithm between AUI & AUMA to find a compromise between runtime and moer-efficiency (later).
+     */
+    private static void algoRun()
+    {
+        // TODO find suitibal moer threshold
+        final int moer_thresh = 800;
+        final int day = 288;
+
+        class mwindow
+        {
+            // bounds of window
+            // these times are in INDEXES (index = 5 min).
+            final int start, end, length;
+
+            // avg moer over window
+            final double avgPMOER;
+
+            mwindow(int start, int end, double avg){this.start = start; this.end = end; this.avgPMOER = avg; length = end - start;}
+        }
+
+        List<mwindow> recWindows = new ArrayList<>();
+
+        int sign, wstart = 0; double wavg = 0.0;
+        if (PMOER.get(0) - moer_thresh >= 0) sign = 1;
+        else sign = -1;
+        wavg += PMOER.get(0);
+
+        // find possible windows
+        for(int i = 1; i < PMOER.size(); i++)
+        {
+            if (PMOER.get(i) - moer_thresh >= 0 && sign == -1) // crossed threshold (below -> above)
+            {
+                wavg /= i - wstart;
+                sign = 1;
+                recWindows.add(new mwindow(wstart, i, wavg)); // add window to possible windows to recommend
+            }
+            else if (PMOER.get(i) - moer_thresh < 0 && sign == 1) // crossed threshold (above -> below)
+            {
+                wstart = i;
+                wavg = 0;
+                sign = -1;
+            }
+            // we add at end of the loop instead of start
+            // this is bc the moer value represents the avg moer for the *next* 5 min.
+            wavg += PMOER.get(i);
+        }
+
+        // simulate the adjustments of the vm start/end times
+        for(Vm vm : vmlist)
+        {
+            int vstart = vm.getTime()[0] / 300, vend = vm.getTime()[1] / 300;
+            int runlength = vend - vstart;
+
+            // use binary search to ensure that we start with a window that is not before the time that the vm runs.
+            // (we don't want to consider windows that have already passed)
+            int i = Collections.binarySearch(recWindows, new mwindow(vstart, vend, 0.0), (o1, o2) -> {
+                if (o1.start < o2.start) return -1;
+                else if (o1.start > o2.start) return 1;
+                return 0;
+            });
+            if(i < 0)
+                i = -i - 1;
+
+            for(; i < recWindows.size() && recWindows.get(i).start < vstart + day; i++)
+            {
+                mwindow currWindow = recWindows.get(i);
+
+                // Ensure that window doesn't exceed how far the forecast can predict at that time.
+                // (it is not possible to predict 24hrs/288index ahead of time with out current model).
+                if (currWindow.end > vstart + day) break;
+
+                // Ensure that window can fit the runtime.
+                if (currWindow.length < runlength) continue;
+
+                // Ensure that relocating here does save moer.
+                if(currWindow.avgPMOER >= vm.getAveragePMOER()) continue;
+
+                // TODO change so that vm is moved to center of window
+                // Adjust VM start & end!
+                vm.setTime(new int[]{currWindow.start * 300, (currWindow.start + runlength) * 300});
+                break;
+            }
         }
     }
 
@@ -262,11 +372,11 @@ public class Sim {
         // Here are the steps needed to create a PowerDatacenter:
         // 1. We need to create a list to store
         //    our machine
-        List<Host> hostList = new ArrayList<Host>();
+        List<Host> hostList = new ArrayList<>();
 
         // 2. A Machine contains one or more PEs or CPUs/Cores.
         // In this example, it will have only one core.
-        List<Pe> peList = new ArrayList<Pe>();
+        List<Pe> peList = new ArrayList<>();
 
         int mips = 100_000;
 
@@ -303,7 +413,7 @@ public class Sim {
         double costPerMem = 0.05;		// the cost of using memory in this resource
         double costPerStorage = 0.001;	// the cost of using storage in this resource
         double costPerBw = 0.0;			// the cost of using bw in this resource
-        LinkedList<Storage> storageList = new LinkedList<Storage>();	//we are not adding SAN devices by now
+        LinkedList<Storage> storageList = new LinkedList<>();	//we are not adding SAN devices by now
 
         DatacenterCharacteristics characteristics = new DatacenterCharacteristics(
                 arch, os, vmm, hostList, time_zone, cost, costPerMem, costPerStorage, costPerBw);
@@ -330,7 +440,7 @@ public class Sim {
     private static DatacenterBroker createBroker()
     {
 
-        DatacenterBroker broker = null;
+        DatacenterBroker broker;
         try
         {
             broker = new DatacenterBroker("Broker");
@@ -348,12 +458,11 @@ public class Sim {
      * @param list list of Cloudlets
      * @param ostream output stream (file/console)
      */
-    private static void printCloudletList(List<Cloudlet> list, OutputStream ostream) throws IOException
-    {
+    private static void printCloudletList(List<Cloudlet> list, OutputStream ostream) {
+        carbon = 0.0;
         OutputStream prevOStream = Log.getOutput();
         Log.setOutput(ostream);
 
-        int size = list.size();
         Cloudlet cloudlet;
 
         Log.formatLine(
@@ -383,6 +492,7 @@ public class Sim {
                     dft.format(cloudlet.getExecStartTime()),
                     dft.format(cloudlet.getFinishTime()),
                     dft.format(cloudlet.getTotalEmissions()));
+            carbon += cloudlet.getTotalEmissions();
         }
 
         Log.setOutput(prevOStream);

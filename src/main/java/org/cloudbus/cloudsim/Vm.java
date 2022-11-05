@@ -60,9 +60,6 @@ public class Vm {
 	/** CUSTOM. The start time (sec) and end time (sec) of the runtime of this VM. */
 	private int start, end;
 
-	/** CUSTOM. The *average* MOER over the VM's runtime interval*/
-	private double avgMOER;
-
 	/** The Virtual Machine Monitor (VMM) that manages the VM. */
 	private String vmm;
 
@@ -89,6 +86,10 @@ public class Vm {
 
 	/** The current allocated mips for each VM's PE. */
 	private List<Double> currentAllocatedMips;
+
+	/** CUSTOM. Refrences to the moer lists in Sim.java */
+	private List<Integer> MOER;
+	private List<Integer> PMOER;
 
 	/** Indicates if the VM is being instantiated. */
 	private boolean beingInstantiated;
@@ -175,6 +176,7 @@ public class Vm {
 			double percentUtilization,
 			int start, int end,
 			List<Integer> MOER,
+			List<Integer> PMOER,
 
 			CloudletSchedulerTimeShared cloudletScheduler) {
 		setId(id);
@@ -193,11 +195,9 @@ public class Vm {
 
 		// custom instance variables are initialized here
 		this.percentUtilization = percentUtilization;
-		this.start = start; this.end = end;
-		int ms = start / 300, me = end / 300; // convert time-scale from unit = sec to unit = 5min.
-		for(int i = ms + 1; i <= me; i++) // from (start, end].
-			avgMOER += MOER.get(i);
-		avgMOER /= me - ms;
+		this.MOER = MOER;
+		this.PMOER = PMOER;
+		setTime(new int[]{start, end});
 		cloudletScheduler.setVM(this);
 
 		setCurrentAllocatedBw(0);
@@ -706,6 +706,7 @@ public class Vm {
 
 
 	public int[] getTime() {return new int[]{start, end};}
+	public void setTime(int[] t) {start = t[0]; end = t[1];}
 
 	public double getPercentUtilization() {return percentUtilization;}
 
@@ -742,12 +743,31 @@ public class Vm {
 	}
 
 	/**
-	 * Gets MOER (*averaged* over the runtime interval) in pounds of emissions per megawatt-hour (e.g. CO2 lbs/MWh)
+	 * Gets observed MOER (*averaged* over the runtime interval) in pounds of emissions per megawatt-hour (e.g. CO2 lbs/MWh)
 	 *
 	 * @return
 	 */
-	public double getMOER() {
+	public double getAverageMOER() {
+		double avgMOER = 0;
+		int ms = start / 300, me = end / 300; // convert time-scale from unit = sec to unit = 5min.
+		for(int i = ms; i < me; i++) // from [start, end).
+			avgMOER += MOER.get(i);
+		avgMOER /= me - ms;
 		return avgMOER;
+	}
+
+	/**
+	 * Gets *predicted* MOER (*averaged* over the runtime interval) in pounds of emissions per megawatt-hour (e.g. CO2 lbs/MWh)
+	 *
+	 * @return
+	 */
+	public double getAveragePMOER() {
+		double avgPMOER = 0;
+		int ms = start / 300, me = end / 300; // convert time-scale from unit = sec to unit = 5min.
+		for(int i = ms; i < me; i++) // from [start, end).
+			avgPMOER += PMOER.get(i);
+		avgPMOER /= me - ms;
+		return avgPMOER;
 	}
 
 	/**
@@ -756,7 +776,16 @@ public class Vm {
 	 * @return
 	 */
 	public double getCarbon() {
-		return getMOER() * getEnergy();
+		return getAverageMOER() * getEnergy();
+	}
+
+	/**
+	 * Gets the *predicted* carbon over the runtime.
+	 *
+	 * @return
+	 */
+	public double getPCarbon() {
+		return getAveragePMOER() * getEnergy();
 	}
 
 	/**
@@ -800,7 +829,7 @@ public class Vm {
 				"user id: " + getUserId(),
 				"ram (GB): "+ getRam() / 1000,
 				"cpu count: " + getNumberOfPes());
-		if(avgMOER != 0) out += String.format(", %18s, %28s, %s",
+		if(getAverageMOER() != 0) out += String.format(", %18s, %28s, %s",
 				"pow: " + String.format("%.2f", getPower()),
 				"avg percent CPU util: " + String.format("%.2f", percentUtilization),
 				"start & end: (" + start + ", " + end + ")");
