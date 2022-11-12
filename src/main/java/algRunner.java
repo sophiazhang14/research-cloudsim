@@ -6,10 +6,7 @@ import org.cloudbus.cloudsim.provisioners.RamProvisionerSimple;
 
 import java.io.*;
 import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.function.Consumer;
 
 public class algRunner {
@@ -18,17 +15,15 @@ public class algRunner {
     private static final String
             COMMA_DELIMITER = ",";
 
-    // all files listed are located at "cloudsim\[filename]"
-    //paths
-    private static final String
+    //input paths
+    private static String
 
-            //input files
-            shortlist_path = "vmtable_preprocessed_short.csv",
-            moer_path = "CASIO_NORTH_2019_APRIL.csv";
+            vm_path,
+            moer_path;
 
     private static final DecimalFormat dft = new DecimalFormat("##############0.###");
 
-    private static final int numVMs = 1000;
+    private static int numVMs;
 
     // lists
     private static List<Cloudlet> cloudletList;
@@ -44,9 +39,10 @@ public class algRunner {
     public static double lastCarbon;
     public static double lastWaste;
 
+    // constructor sets the input paths
+    public algRunner(String vm_path, String moer_path, int numVMs){this.vm_path = vm_path; this.moer_path = moer_path; this.numVMs = numVMs;}
 
     //------------Below are initialization functions------------//
-
 
     private static Datacenter createDatacenter(String name)
     {
@@ -170,18 +166,21 @@ public class algRunner {
      *
      * @throws IOException b/c reading from file...
      */
-    private static void init_VMs(Runnable carbon_adjuster, Consumer<Vm> vm_adjuster) throws IOException
+    private static void init_VMs(Runnable carbon_adjuster, Consumer<String[]> vm_adjuster) throws IOException
     {
 
         //Fourth step: Create VMs
         int brokerId = broker.getId();
-        BufferedReader br = new BufferedReader(new FileReader(shortlist_path));
+        BufferedReader br = new BufferedReader(new FileReader(vm_path));
 
         UtilizationModel utilizationModel = new UtilizationModelFull();
 
         // read data from vmtable.csv
         String line;
-        br.readLine(); // flush the useless header line
+
+        //flush useless header line
+        br.readLine();
+
         for(int i = 0; i < numVMs; i++)
         {
             if ((line = br.readLine()) == null) break;
@@ -204,6 +203,9 @@ public class algRunner {
             String
                     vmm = "Windows Hyper-V"; // Azure uses this virtual machine manager (hypervisor)
 
+            // adjust this vm's resouces to reduce cost if possible
+            vm_adjuster.accept(values);
+
             Vm vm = new Vm(
                     vmid,
                     brokerId,
@@ -220,7 +222,6 @@ public class algRunner {
                     PMOER,
                     new CloudletSchedulerTimeShared());
 
-            vm_adjuster.accept(vm); // adjust this vm's resouces to reduce cost if possible
 
             vmlist.add(vm);
         }
@@ -259,7 +260,7 @@ public class algRunner {
      * initialize data: CloudSim, datacenters, broker, VMs, MOER.
      * (calls init_MOER + init_VMs + init_datacenters)
      */
-    private static void init_data(Runnable carbon_adjuster, Consumer<Vm> vm_adjuster) {
+    private static void init_data(Runnable carbon_adjuster, Consumer<String[]> vm_adjuster) {
         vmlist = new ArrayList<>();
         cloudletList = new ArrayList<>();
         MOER = new ArrayList<>(); PMOER = new ArrayList<>();
@@ -312,12 +313,13 @@ public class algRunner {
      *  outputting results+data to files and console.
      *
      * @param name the name of the simulation
-     * @param save_carbon **the Runnable refrencing the carbon-saving algorithm function**
+     * @param save_carbon **the Runnable referencing the carbon-saving algorithm function**
+     * @param vm_adjuster **the Consumer referencing a function that adjusts the vms as they are read from file**
      * @param sp path to the output file to contain cloudlets' final states
      * @param svmlp path to the output file to contain adjusted vms
      * @return returns an array: {[carbon that was emitted (lbs CO2)], [wasted money ($)]}
      */
-    public static double[] runCycle(String name, Runnable save_carbon, Consumer<Vm> save_waste, String sp, String svmlp)
+    public static double[] runCycle(String name, Runnable save_carbon, Consumer<String[]> vm_adjuster, String sp, String svmlp)
     {
         Log.print("\n\n\n\n\n");
         Log.printLine("|--------------SIMULATION WITH \'" + name.toUpperCase() +"\' STARTS HERE--------------|");
@@ -327,7 +329,7 @@ public class algRunner {
         /* Initialize refrences, csv data, cloudSim, brokers, etc... (again bc we are starting/restarting)
          * ALSO, run our MOER/CO2-saving algorithm after initialization of vms from input csv! (this will modify start-end times of VM runtimes)
          */
-        init_data(save_carbon, save_waste);
+        init_data(save_carbon, vm_adjuster);
 
         /* Re-run the cloud simulation using start-end times that were adjusted by our algorithm.
          * Writes new cloudlet results to file

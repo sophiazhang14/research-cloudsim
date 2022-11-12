@@ -1,4 +1,6 @@
-/*
+/**
+
+this file runs algorithms that work on the filtered vm shortlist, but do not make sense to run on the full vm list.
 
 defs:
 waste ($): money wasted from unused VM cpu cores (from 1 simulation)
@@ -10,34 +12,32 @@ carbon/carbon emissions (lbs CO2): carbon emitted due to execution of all Cloudl
 
 
 import org.cloudbus.cloudsim.*;
-import org.cloudbus.cloudsim.core.CloudSim;
-import org.cloudbus.cloudsim.provisioners.BwProvisionerSimple;
-import org.cloudbus.cloudsim.provisioners.PeProvisionerSimple;
-import org.cloudbus.cloudsim.provisioners.RamProvisionerSimple;
 
 import java.io.*;
-import java.text.DecimalFormat;
 import java.util.*;
-import java.util.function.Consumer;
 
 @SuppressWarnings("SpellCheckingInspection")
-public class Sim {
-
+public class Sim_filtered {
 
     // file path/name constants
-    //output files
-    private static String sim_path = "sim.csv",
+
+    //input paths
+    private static final String vm_path = "vmtable_preprocessed_short.csv",
+            moer_path = "CASIO_NORTH_2019_APRIL.csv";
+    // output paths
+    private static final String sim_path = "sim.csv",
             sim_with_AUI_path = "sim_with_AUI.csv",
-            sim_with_shutdown_path = "sim_with_shudown",
             svmlist_path = "simulated_vms.csv",
-            svmlist_with_AUI_path = "simulated_vms_after_AUI.csv",
-            svmlist_with_shutdown_path = "simulated_vms_after_AUI.csv";
+            svmlist_with_AUI_path = "simulated_vms_after_AUI.csv";
 
     // each of the following are updated once
     // these contain the carbon and waste produced by their corresponding simulation, indicated by their name.
     private static double[] noAlg_dat;
     private static double[] AUI_dat;
-    private static double[] shutDown_dat;
+
+    private static final int numVMs = 1000;
+    // realizing that not all users will accept the suggestions, we add an 'acceptanct rate'
+    private static final double AUI_acceptance = 0.25, AUMA_acceptance = 0.4;
 
 
     //MAIN FUNCTION
@@ -51,9 +51,10 @@ public class Sim {
             return;
         }
 
-        noAlg_dat = algRunner.runCycle("No Algorithm", () -> {}, (Vm vm) -> {}, sim_path, svmlist_path);
-        AUI_dat = algRunner.runCycle("Approach Using Intersections (AUI)", Sim::runAUI, Sim::runWR, sim_with_AUI_path, svmlist_with_AUI_path);
-        shutDown_dat = algRunner.runCycle("VM Shutdown Strategy", () -> {}, Sim::runShutDown, sim_with_shutdown_path, svmlist_with_shutdown_path);
+        new algRunner(vm_path, moer_path, numVMs);
+
+        noAlg_dat = algRunner.runCycle("No Algorithm (do nothing)", () -> {}, (String[] vm_dat) -> {}, sim_path, svmlist_path);
+        AUI_dat = algRunner.runCycle("Approach Using Intersections (AUI)", Sim_filtered::runAUI, (String[] vm_dat) -> {}, sim_with_AUI_path, svmlist_with_AUI_path);
     }
 
 
@@ -113,6 +114,10 @@ public class Sim {
         // simulate the adjustments of the vm start/end times
         for(Vm vm : algRunner.vmlist)
         {
+            // not all users will accept the suggestion. this will be simulated with 'acceptance'.
+            if(Math.random() > AUI_acceptance) continue;
+
+
             int vstart = vm.getTime()[0] / 300, vend = vm.getTime()[1] / 300;
             int runlength = vend - vstart;
 
@@ -126,12 +131,13 @@ public class Sim {
             if(i < 0)
                 i = -i - 1;
 
+            // search for a suitable time window
             for(; i < recWindows.size() && recWindows.get(i).start < vstart + day; i++)
             {
                 mwindow currWindow = recWindows.get(i);
 
                 // Ensure that window doesn't exceed how far the forecast can predict at that time.
-                // (it is not possible to predict 24hrs/288index ahead of time with out current model).
+                // (it is not possible to predict 24hrs/288index ahead of time without current model).
                 if (currWindow.end > vstart + day) break;
 
                 // Ensure that window can fit the runtime.
@@ -155,30 +161,5 @@ public class Sim {
     }
 
 
-    /**
-     * Here, we apply core-reduction on *one* given VM.
-     * Core-reduction Policies:
-     * - cores > 2
-     * X Avg. CPU utilization <= 0.10
-     * - p95 < 0.80
-     * - runtime length >= 3600 sec
-     * X user has >= 100 VMs
-     * - waste > $50
-     * @param vm the VM to be adjusted.
-     */
-    private static void runWR(Vm vm)
-    {
-        //TODO implement waste reduction
-    }
 
-    /**
-     * TO ALL VMS
-     * Shutdown Policies:
-     * -
-     */
-
-    private static void runShutDown(Vm vm)
-    {
-        //TODO
-    }
 }
