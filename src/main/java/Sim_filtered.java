@@ -209,22 +209,4 @@ public class Sim_filtered {
         double averageDelay = sumDelay / algRunner.vmlist.size(); // in seconds
         return averageDelay / 3600; // in hrs
     }
-
-
-    /**
-     * Here, we apply core-reduction on *one* given VM.
-     * Core-reduction Policies:
-     * - cores > 2
-     * X Avg. CPU utilization <= 0.10
-     * - p95 < 0.80
-     * - runtime length >= 3600 sec
-     * X user has >= 100 VMs
-     * - waste > $50
-     * @param vm_dat the data of the VM to be adjusted.
-     */
-    private static String[] runCR(String[] vm_dat)
-    {
-        //TODO implement waste reduction
-        return null;
-    }
 }

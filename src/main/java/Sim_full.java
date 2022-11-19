@@ -107,7 +107,6 @@ public class Sim_full {
 
         // filter un-reducable vms
         if(p95 >= p95thresh) return vm_dat;
-
         /*
         Code is subject to change bc users might have more options for number of cores other than those listed in the array 'CC_VALS'
         (e.g. core counts that are 1, 3, 5, 6, 7, etc.)
@@ -116,6 +115,8 @@ public class Sim_full {
          */
         int newCpuCores = (int)Math.ceil((double)cpuCores * p95 / p95thresh);
         for(int corecount : CC_VALS) if(corecount >= newCpuCores) {newCpuCores = corecount; break;};
+
+        if(newCpuCores < cpuCores && Math.random() > core_reduction_acceptance) return vm_dat;
 
         vm_dat[6] = String.valueOf(newCpuCores);
         vm_dat[4] = String.valueOf(p95 * cpuCores / newCpuCores);

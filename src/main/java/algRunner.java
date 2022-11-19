@@ -455,9 +455,9 @@ public class algRunner {
     private static void printResults(String algName)
     {
         System.out.print(algName + ":\n" +
-                "Carbon: " + dft.format(lastCarbon) + " lbs CO2\n" +
-                "Money wasted by user: $" + dft.format(lastWaste) + "\n" +
-                "Average postponement of all VM runtimes: " + dft.format(lastAverageDelay) + " hrs\n" +
+                "Total carbon emitted: " + dft.format(lastCarbon) + " lbs CO2\n" +
+                "Total money wasted by users: $" + dft.format(lastWaste) + "\n" +
+                "Average postponement of runtime over all VMs: " + dft.format(lastAverageDelay) + " hrs\n" +
                 "\n\n");
     }
 }
