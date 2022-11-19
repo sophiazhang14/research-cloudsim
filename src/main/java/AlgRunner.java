@@ -7,12 +7,10 @@ import org.cloudbus.cloudsim.provisioners.RamProvisionerSimple;
 import java.io.*;
 import java.text.DecimalFormat;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-public class algRunner {
+public class AlgRunner {
 
     // string constants
     private static final String
@@ -42,7 +40,7 @@ public class algRunner {
     public static double lastCarbon, lastWaste, lastAverageDelay;
 
     // constructor sets the input paths
-    public algRunner(String vm_path, String moer_path, int numVMs){this.vm_path = vm_path; this.moer_path = moer_path; this.numVMs = numVMs;}
+    public AlgRunner(String vm_path, String moer_path, int numVMs){this.vm_path = vm_path; this.moer_path = moer_path; this.numVMs = numVMs;}
 
     //------------Below are initialization functions------------//
 
