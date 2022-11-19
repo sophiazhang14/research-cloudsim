@@ -101,7 +101,7 @@ public class Cloudlet {
     private double execStartTime;
 
     /**
-     * The time where this Cloudlet completes.
+     * The time when this Cloudlet completes.
      */
     private double finishTime;
 

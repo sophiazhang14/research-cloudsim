@@ -739,6 +739,7 @@ public class Vm {
 	 */
 	public double getEnergy() {
 		int time = end - start;
+		if (time == 0) return 0;
 		return getPower() * time / (1_000_000 * 3600.0); // watt * s / 1000000 / 3600 = megawatt * hour
 	}
 
@@ -750,6 +751,7 @@ public class Vm {
 	public double getAverageMOER() {
 		double avgMOER = 0;
 		int ms = start / 300, me = end / 300; // convert time-scale from unit = sec to unit = 5min.
+		if(me - ms == 0) return 0;
 		for(int i = ms; i < me; i++) // from [start, end).
 			avgMOER += MOER.get(i);
 		avgMOER /= me - ms;
@@ -764,6 +766,7 @@ public class Vm {
 	public double getAveragePMOER() {
 		double avgPMOER = 0;
 		int ms = start / 300, me = end / 300; // convert time-scale from unit = sec to unit = 5min.
+		if(me - ms == 0) return 0;
 		for(int i = ms; i < me; i++) // from [start, end).
 			avgPMOER += PMOER.get(i);
 		avgPMOER /= me - ms;

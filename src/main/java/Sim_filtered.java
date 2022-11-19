@@ -53,8 +53,8 @@ public class Sim_filtered {
 
         new algRunner(vm_path, moer_path, numVMs);
 
-        noAlg_dat = algRunner.runCycle("No Algorithm (do nothing)", () -> {}, (String[] vm_dat) -> {}, sim_path, svmlist_path);
-        AUI_dat = algRunner.runCycle("Approach Using Intersections (AUI)", Sim_filtered::runAUI, (String[] vm_dat) -> {}, sim_with_AUI_path, svmlist_with_AUI_path);
+        noAlg_dat = algRunner.runCycle("No Algorithm (do nothing)", () -> {}, (String[] vm_dat) -> vm_dat, sim_path, svmlist_path);
+        AUI_dat = algRunner.runCycle("Approach Using Intersections (AUI)", Sim_filtered::runAUI, (String[] vm_dat) -> vm_dat, sim_with_AUI_path, svmlist_with_AUI_path);
     }
 
 
@@ -157,9 +157,24 @@ public class Sim_filtered {
 
     private static void runAUMA()
     {
-
+        //TODO
     }
 
 
-
+    /**
+     * Here, we apply core-reduction on *one* given VM.
+     * Core-reduction Policies:
+     * - cores > 2
+     * X Avg. CPU utilization <= 0.10
+     * - p95 < 0.80
+     * - runtime length >= 3600 sec
+     * X user has >= 100 VMs
+     * - waste > $50
+     * @param vm_dat the data of the VM to be adjusted.
+     */
+    private static String[] runWR(String[] vm_dat)
+    {
+        //TODO implement waste reduction
+        return null;
+    }
 }

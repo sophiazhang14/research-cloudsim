@@ -8,6 +8,7 @@ import java.io.*;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class algRunner {
 
@@ -166,7 +167,7 @@ public class algRunner {
      *
      * @throws IOException b/c reading from file...
      */
-    private static void init_VMs(Runnable carbon_adjuster, Consumer<String[]> vm_adjuster) throws IOException
+    private static void init_VMs(Runnable carbon_adjuster, Function<String[], String[]> vm_adjuster) throws IOException
     {
 
         //Fourth step: Create VMs
@@ -186,6 +187,10 @@ public class algRunner {
             if ((line = br.readLine()) == null) break;
 
             String[] values = line.split(COMMA_DELIMITER);
+
+            // adjust this vm's resouces to reduce cost if possible
+            values = vm_adjuster.apply(values);
+
             int
                     vmid = vmlist.size(), // Vm ID
                     ram = (values[7].equals(">64")) ? 70 :
@@ -203,8 +208,6 @@ public class algRunner {
             String
                     vmm = "Windows Hyper-V"; // Azure uses this virtual machine manager (hypervisor)
 
-            // adjust this vm's resouces to reduce cost if possible
-            vm_adjuster.accept(values);
 
             Vm vm = new Vm(
                     vmid,
@@ -260,7 +263,7 @@ public class algRunner {
      * initialize data: CloudSim, datacenters, broker, VMs, MOER.
      * (calls init_MOER + init_VMs + init_datacenters)
      */
-    private static void init_data(Runnable carbon_adjuster, Consumer<String[]> vm_adjuster) {
+    private static void init_data(Runnable carbon_adjuster, Function<String[], String[]> vm_adjuster) {
         vmlist = new ArrayList<>();
         cloudletList = new ArrayList<>();
         MOER = new ArrayList<>(); PMOER = new ArrayList<>();
@@ -319,7 +322,7 @@ public class algRunner {
      * @param svmlp path to the output file to contain adjusted vms
      * @return returns an array: {[carbon that was emitted (lbs CO2)], [wasted money ($)]}
      */
-    public static double[] runCycle(String name, Runnable save_carbon, Consumer<String[]> vm_adjuster, String sp, String svmlp)
+    public static double[] runCycle(String name, Runnable save_carbon, Function<String[], String[]> vm_adjuster, String sp, String svmlp)
     {
         Log.print("\n\n\n\n\n");
         Log.printLine("|--------------SIMULATION WITH \'" + name.toUpperCase() +"\' STARTS HERE--------------|");
