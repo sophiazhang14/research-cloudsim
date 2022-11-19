@@ -28,7 +28,7 @@ public class AlgRunner {
 
     // lists
     private static List<Cloudlet> cloudletList;
-    public static List<Vm> vmlist;
+    public static List<Vm> vmlist, vmflist;
     // MOER data (index represents how many 5-minute intervals have passed since start of month, value represents MOER (CO2 lbs/MWh) at that time)
     public static List<Integer> MOER, PMOER;
 
@@ -181,11 +181,13 @@ public class AlgRunner {
         //flush useless header line
         br.readLine();
 
-        for(int i = 0; i < numVMs; i++)
+        while(vmlist.size() < numVMs)
         {
             if ((line = br.readLine()) == null) break;
 
             String[] values = line.split(COMMA_DELIMITER);
+            boolean missingValue = false; for(String s : values) if(s.equals("")) {missingValue = true; break;}
+            if(missingValue) continue;
 
             // adjust this vm's resouces to reduce cost if possible
             values = vm_adjuster.apply(values);
@@ -263,7 +265,7 @@ public class AlgRunner {
      * (calls init_MOER + init_VMs + init_datacenters)
      */
     private static void init_data(Supplier<Double> carbon_adjuster, Function<String[], String[]> vm_adjuster) {
-        vmlist = new ArrayList<>();
+        vmlist = new ArrayList<>(); vmflist = new ArrayList<>();
         cloudletList = new ArrayList<>();
         MOER = new ArrayList<>(); PMOER = new ArrayList<>();
         datacenters = new Datacenter[100];

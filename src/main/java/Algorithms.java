@@ -184,7 +184,6 @@ public class Algorithms {
     {
         double max_util = Double.parseDouble(vm_dat[2]), avg_util = Double.parseDouble(vm_dat[3]);
         int t_created = (int) Double.parseDouble(vm_dat[0]), t_deleted = (int) Double.parseDouble(vm_dat[1]), t_l = t_deleted - t_created;
-        System.out.println(t_created + " " + t_deleted);
         // check criteria
         if(max_util / avg_util <= 10) return vm_dat;
 

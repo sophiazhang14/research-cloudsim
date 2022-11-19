@@ -18,8 +18,8 @@ public class Sim_full {
     // file path/name constants
 
     // input paths
-    private static final String vm_path = "vmtable_preprocessed_short.csv",
-            moer_path = "CASIO_NORTH_2019_APRIL.csv";
+    private static final String vm_path = "cloudsim_unfiltered_VM_Table_SHORTENED.csv",
+            moer_path = "cloudsim_moer_data.csv";
     // output paths
     private static final String
             sim_path = "sim.csv",
