@@ -16,14 +16,19 @@ import java.util.function.Function;
 
 public class Sim_full {
 
+    // contains all possible core counts of vms
     private static final int[] CC_VALS = new int[]{2, 4, 8, 12, 24, 30};
+
+    // stores the threshold for the max p95.
+    // it is assumed that once the cpu utilization exceeds this percentage, the vm will experience some kind of performance degradation or lag.
+    private static final double p95thresh = 80.0;
 
     // file path/name constants
 
-    //input paths
+    // input paths
     private static final String vm_path = "vmtable_preprocessed_short.csv",
             moer_path = "CASIO_NORTH_2019_APRIL.csv";
-    //output paths
+    // output paths
     private static final String
             sim_path = "sim.csv",
             svmlist_path = "simulated_vms.csv",
@@ -101,7 +106,7 @@ public class Sim_full {
         double max_util = Double.parseDouble(vm_dat[2]), avg_util = Double.parseDouble(vm_dat[3]);
 
         // filter un-reducable vms
-        if(p95 >= 75) return vm_dat;
+        if(p95 >= p95thresh) return vm_dat;
 
         /*
         Code is subject to change bc users might have more options for number of cores other than those listed in the array 'CC_VALS'
@@ -109,7 +114,7 @@ public class Sim_full {
 
         Current code assumes that the vm user can only change their core count to one count listed in 'CC_VALS'.
          */
-        int newCpuCores = (int)Math.ceil((double)cpuCores * p95 / 75);
+        int newCpuCores = (int)Math.ceil((double)cpuCores * p95 / p95thresh);
         for(int corecount : CC_VALS) if(corecount >= newCpuCores) {newCpuCores = corecount; break;};
 
         vm_dat[6] = String.valueOf(newCpuCores);
