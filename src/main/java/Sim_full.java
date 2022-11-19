@@ -58,9 +58,9 @@ public class Sim_full {
 
         new algRunner(vm_path, moer_path, numVMs);
 
-        noAlg_dat = algRunner.runCycle("No Algorithm (do nothing)", () -> {}, (String[] vm_dat) -> vm_dat, sim_path, svmlist_path);
-        shutdown_dat = algRunner.runCycle("VM Shutdown Strategy", () -> {}, Sim_full::runShutdown, sim_with_shutdown_path, svmlist_with_shutdown_path);
-        core_reduction_dat = algRunner.runCycle("Core Reduction Strategy", () -> {}, Sim_full::runCR, sim_with_core_reduction, svmlist_with_core_reduction);
+        noAlg_dat = algRunner.runCycle("No Algorithm (do nothing)", () -> 0.0, (String[] vm_dat) -> vm_dat, sim_path, svmlist_path);
+        shutdown_dat = algRunner.runCycle("VM Shutdown Strategy", () -> 0.0, Sim_full::runShutdown, sim_with_shutdown_path, svmlist_with_shutdown_path);
+        core_reduction_dat = algRunner.runCycle("Core Reduction Strategy", () -> 0.0, Sim_full::runCR, sim_with_core_reduction, svmlist_with_core_reduction);
     }
 
     /**
@@ -76,7 +76,7 @@ public class Sim_full {
         int t_created = (int) Double.parseDouble(vm_dat[0]), t_deleted = (int) Double.parseDouble(vm_dat[1]), t_l = t_deleted - t_created;
         System.out.println(t_created + " " + t_deleted);
         // check criteria
-        if(max_util / avg_util <= 5) return vm_dat;
+        if(max_util / avg_util <= 10) return vm_dat;
 
         // not all users will accept the recommendation.
         if(Math.random() > shutdown_acceptance) return vm_dat;
