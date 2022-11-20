@@ -226,7 +226,7 @@ public class AlgRunner {
                     PMOER,
                     new CloudletSchedulerTimeShared());
 
-
+            if(endTime - startTime >= 2100 && endTime - startTime <= 86100) vmflist.add(vm);
             vmlist.add(vm);
         }
 
@@ -256,6 +256,7 @@ public class AlgRunner {
 
             cloudletList.add(cloudlet1);
         }
+        System.out.println((double)vmlist.size() / vmflist.size());
 
         br.close();
     }

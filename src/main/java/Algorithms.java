@@ -9,7 +9,7 @@ public class Algorithms {
     // algorithm constants
 
     // realizing that not all users will accept the suggestions, we add an 'acceptanct rate'
-    private static final double AUI_acceptance = 0.225, AUMA_acceptance = 0.175;
+    private static final double AUI_acceptance = 0.25, AUMA_acceptance = 0.2;
     private static final double shutdown_acceptance = 0.65, core_reduction_acceptance = 0.7;
 
     // contains all possible core counts of vms
@@ -32,9 +32,8 @@ public class Algorithms {
      */
     public static double runAUI()
     {
-        //TODO: find suitibal moer threshold
-        //todo: return average delay
-        final int moer_thresh = 800;
+        //TODO: find suitable moer threshold
+        final int moer_thresh = 750;
         final int day = 288;
 
         class mwindow
@@ -79,7 +78,7 @@ public class Algorithms {
 
         double sumDelay = 0.0;
         // simulate the adjustments of the vm start/end times
-        for(Vm vm : AlgRunner.vmlist)
+        for(Vm vm : AlgRunner.vmflist)
         {
             // not all users will accept the suggestion. this will be simulated with 'acceptance'.
             if(Math.random() > AUI_acceptance) continue;
@@ -131,12 +130,11 @@ public class Algorithms {
      */
     public static double runAUMA()
     {
-        //todo: return average delay
         ArrayList<Integer> prefPMOER = new ArrayList<>(); prefPMOER.add(AlgRunner.PMOER.get(0));
         for(int i = 1; i < AlgRunner.PMOER.size(); i++) prefPMOER.add(prefPMOER.get(i - 1) + AlgRunner.PMOER.get(i));
 
         double sumDelay = 0.0;
-        for(Vm vm : AlgRunner.vmlist)
+        for(Vm vm : AlgRunner.vmflist)
         {
             // account for the chance that user declines suggestion here
             if(Math.random() > AUMA_acceptance) continue;
@@ -180,7 +178,7 @@ public class Algorithms {
      * @param vm_dat the VM to be adjusted (represented as a list of strings)
      */
 
-    public static String[] runShutdown(String[] vm_dat)
+    public static String[] runSD(String[] vm_dat)
     {
         double max_util = Double.parseDouble(vm_dat[2]), avg_util = Double.parseDouble(vm_dat[3]);
         int t_created = (int) Double.parseDouble(vm_dat[0]), t_deleted = (int) Double.parseDouble(vm_dat[1]), t_l = t_deleted - t_created;
@@ -216,8 +214,9 @@ public class Algorithms {
 
         // filter un-reducable vms
         if(p95 >= p95thresh) return vm_dat;
+
         /*
-        Code is subject to change bc users might have more options for number of cores other than those listed in the array 'CC_VALS'
+        Code below is subject to change bc users might have more options for number of cores other than those listed in the array 'CC_VALS'
         (e.g. core counts that are 1, 3, 5, 6, 7, etc.)
 
         Current code assumes that the vm user can only change their core count to one count listed in 'CC_VALS'.
