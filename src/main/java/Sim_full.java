@@ -9,6 +9,8 @@
     AUMA: Approach Using Moving Averages
     CR: Core Reduction Strategy
     SD: Shutdown Strategy
+    moer-based algorithm: algorithm that uses moer to decide what to do
+    vm-based algorithm: algorithm that uses characteristics of vm to decide what to do
 
  */
 
