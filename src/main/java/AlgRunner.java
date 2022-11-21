@@ -256,7 +256,6 @@ public class AlgRunner {
 
             cloudletList.add(cloudlet1);
         }
-        System.out.println((double)vmlist.size() / vmflist.size());
 
         br.close();
     }
