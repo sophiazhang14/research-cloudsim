@@ -97,11 +97,11 @@ public class SimMain {
 
         // moer-based + core reduction
         AUI_CR_dat = AlgRunner.runCycle("AUI and CR", Algorithms::runAUI, Algorithms::runCR, sim_AUI_CR, svm_AUMA_CR);
-        AUMA_CR_dat = AlgRunner.runCycle("AUMA and CR", Algorithms::runAUMA, Algorithms::runCR, sim_AUMA_CR, sim_AUMA_CR);
+        AUMA_CR_dat = AlgRunner.runCycle("AUMA and CR", Algorithms::runAUMA, Algorithms::runCR, sim_AUMA_CR, svm_AUMA_CR);
 
         // moer-based + shutdown
-        AUI_SD_dat = AlgRunner.runCycle("AUI and SD", Algorithms::runAUI, Algorithms::runSD, sim_AUI_SD, sim_AUI_SD);
-        AUMA_SD_dat = AlgRunner.runCycle("AUMA and SD", Algorithms::runAUMA, Algorithms::runSD, sim_AUMA_SD, sim_AUMA_SD);
+        AUI_SD_dat = AlgRunner.runCycle("AUI and SD", Algorithms::runAUI, Algorithms::runSD, sim_AUI_SD, svm_AUI_SD);
+        AUMA_SD_dat = AlgRunner.runCycle("AUMA and SD", Algorithms::runAUMA, Algorithms::runSD, sim_AUMA_SD, svm_AUMA_SD);
     }
 
 }
