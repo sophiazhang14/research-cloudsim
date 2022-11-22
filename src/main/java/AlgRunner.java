@@ -37,7 +37,8 @@ public class AlgRunner {
     private static DatacenterBroker broker;
 
     // carbon & waste (is updated after each simulation)!
-    public static double lastCarbon, lastWaste, lastAverageDelay;
+    public static double lastCarbon, lastWaste;
+    public static double[] lastDelay;
 
     // constructor sets the input paths
     public AlgRunner(String vm_path, String moer_path, int numVMs){this.vm_path = vm_path; this.moer_path = moer_path; this.numVMs = numVMs;}
@@ -166,7 +167,7 @@ public class AlgRunner {
      *
      * @throws IOException b/c reading from file...
      */
-    private static void init_VMs(Supplier<Double> carbon_adjuster, Function<String[], String[]> vm_adjuster) throws IOException
+    private static void init_VMs(Supplier<double[]> carbon_adjuster, Function<String[], String[]> vm_adjuster) throws IOException
     {
 
         //Fourth step: Create VMs
@@ -230,7 +231,7 @@ public class AlgRunner {
             vmlist.add(vm);
         }
 
-        lastAverageDelay = carbon_adjuster.get(); // adjust all vms' start+end times to reduce moer if possible
+        lastDelay = carbon_adjuster.get(); // adjust all vms' start+end times to reduce moer if possible
 
         for(int i = 0; i < numVMs; i++)
         {
@@ -264,7 +265,7 @@ public class AlgRunner {
      * initialize data: CloudSim, datacenters, broker, VMs, MOER.
      * (calls init_MOER + init_VMs + init_datacenters)
      */
-    private static void init_data(Supplier<Double> carbon_adjuster, Function<String[], String[]> vm_adjuster) {
+    private static void init_data(Supplier<double[]> carbon_adjuster, Function<String[], String[]> vm_adjuster) {
         vmlist = new ArrayList<>(); vmflist = new ArrayList<>();
         cloudletList = new ArrayList<>();
         MOER = new ArrayList<>(); PMOER = new ArrayList<>();
@@ -323,7 +324,7 @@ public class AlgRunner {
      * @param svmlp path to the output file to contain adjusted vms
      * @return returns an array: {[carbon that was emitted (lbs CO2)], [wasted money ($)]}
      */
-    public static double[] runCycle(String name, Supplier<Double> save_carbon, Function<String[], String[]> vm_adjuster, String sp, String svmlp)
+    public static double[] runCycle(String name, Supplier<double[]> save_carbon, Function<String[], String[]> vm_adjuster, String sp, String svmlp)
     {
         Log.print("\n\n\n\n\n");
         Log.printLine("|--------------SIMULATION WITH \'" + name.toUpperCase() +"\' STARTS HERE--------------|");
@@ -341,7 +342,7 @@ public class AlgRunner {
          */
         simRun(sp, svmlp);
         printResults(name);
-        return new double[]{lastCarbon, lastWaste, lastAverageDelay};
+        return new double[]{lastCarbon, lastWaste, lastDelay[0], lastDelay[1]};
     }
 
     private static void simRun(String cloudletFN, String vmFN)
@@ -457,7 +458,8 @@ public class AlgRunner {
         System.out.print(algName + ":\n" +
                 "Total carbon emitted: " + dft.format(lastCarbon) + " lbs CO2\n" +
                 "Total money wasted by users: $" + dft.format(lastWaste) + "\n" +
-                "Average postponement of runtime over all VMs: " + dft.format(lastAverageDelay) + " hrs\n" +
+                "Average postponement of runtime over all VMs: " + dft.format(lastDelay[0]) + " hrs\n" +
+                "Average postponement of postponed VMs: " + dft.format(lastDelay[1]) + " hrs\n" +
                 "\n\n");
     }
 }

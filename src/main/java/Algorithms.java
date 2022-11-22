@@ -30,10 +30,10 @@ public class Algorithms {
      * @todo may develop a hybrid algorithm between AUI & AUMA to find a compromise between runtime and moer-efficiency (later).
      * @return the average delay of vms (over all vms including vms that were not adjusted) in hrs
      */
-    public static double runAUI()
+    public static double[] runAUI()
     {
         //TODO: find suitable moer threshold
-        final int moer_thresh = 750;
+        final int moer_thresh = 810;
         final int day = 288;
 
         class mwindow
@@ -77,6 +77,7 @@ public class Algorithms {
 
 
         double sumDelay = 0.0;
+        int numAcc = 0;
         // simulate the adjustments of the vm start/end times
         for(Vm vm : AlgRunner.vmflist)
         {
@@ -115,25 +116,27 @@ public class Algorithms {
                 // TODO: change so that vm is moved to center of window
                 // Adjust VM start & end!
                 sumDelay += currWindow.start * 300 - vm.getTime()[0];
+                numAcc++;
                 vm.setTime(new int[]{currWindow.start * 300, (currWindow.start + runlength) * 300});
                 break;
             }
         }
 
         double averageDelay = sumDelay / AlgRunner.vmlist.size(); // in seconds
-        return averageDelay / 3600; // in hrs
+        return new double[]{averageDelay / 3600, sumDelay / numAcc / 3600}; // in hrs
     }
 
     /**
      * Here, we apply our second algorithm, Aproach Using Moving Averages (AUMA).
      * @return the average postponement of each vm (including vms that were not adjusted) in hrs.
      */
-    public static double runAUMA()
+    public static double[] runAUMA()
     {
         ArrayList<Integer> prefPMOER = new ArrayList<>(); prefPMOER.add(AlgRunner.PMOER.get(0));
         for(int i = 1; i < AlgRunner.PMOER.size(); i++) prefPMOER.add(prefPMOER.get(i - 1) + AlgRunner.PMOER.get(i));
 
         double sumDelay = 0.0;
+        int numAcc = 0;
         for(Vm vm : AlgRunner.vmflist)
         {
             // account for the chance that user declines suggestion here
@@ -162,11 +165,12 @@ public class Algorithms {
             // modify the start and end times of the vm according to the window found in loop above^
             int nstart = ni * 300, nend = nj * 300;
             sumDelay += nstart - vm.getTime()[0];
+            numAcc++;
             vm.setTime(new int[]{nstart, nend});
         }
 
         double averageDelay = sumDelay / AlgRunner.vmlist.size(); // in seconds
-        return averageDelay / 3600; // in hrs
+        return new double[]{averageDelay / 3600, sumDelay / numAcc / 3600}; // in hrs
     }
 
     /**---------------------------------------------- VM BASED ALGORITHMS START HERE -------------------------------------------------*/
