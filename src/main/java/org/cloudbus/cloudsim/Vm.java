@@ -54,8 +54,8 @@ public class Vm {
 	/** The required bw. */
 	private long bw;
 
-	/** CUSTOM. The *average* percent utilization of CPU (1-100) over the VM's runtime.*/
-	private double percentUtilization;
+	/** CUSTOM. The percentage data about utilization of cpu*/
+	private double avg_util, max_util ,p95;
 
 	/** CUSTOM. The start time (sec) and end time (sec) of the runtime of this VM. */
 	private int start, end;
@@ -173,7 +173,9 @@ public class Vm {
 			long size,
 			String vmm,
 
-			double percentUtilization,
+			double avg_util,
+			double max_util,
+			double p95,
 			int start, int end,
 			List<Integer> MOER,
 			List<Integer> PMOER,
@@ -194,7 +196,9 @@ public class Vm {
 		setBeingInstantiated(true);
 
 		// custom instance variables are initialized here
-		this.percentUtilization = percentUtilization;
+		this.avg_util = avg_util;
+		this.max_util = max_util;
+		this.p95 = p95;
 		this.MOER = MOER;
 		this.PMOER = PMOER;
 		setTime(new int[]{start, end});
@@ -411,7 +415,7 @@ public class Vm {
 	 * 
 	 * @param numberOfPes the new number of pes
 	 */
-	protected void setNumberOfPes(int numberOfPes) {
+	public void setNumberOfPes(int numberOfPes) {
 		this.numberOfPes = numberOfPes;
 	}
 
@@ -708,7 +712,23 @@ public class Vm {
 	public int[] getTime() {return new int[]{start, end};}
 	public void setTime(int[] t) {start = t[0]; end = t[1];}
 
-	public double getPercentUtilization() {return percentUtilization;}
+	public double getAvg_util() {return avg_util;}
+
+	public void setAvg_util(double avg_util) {
+		this.avg_util = avg_util;
+	}
+
+	public double getMax_util() {return max_util;}
+
+	public void setMax_util(double max_util) {
+		this.max_util = max_util;
+	}
+
+	public double getP95() {return p95;}
+
+	public void setP95(double p95) {
+		this.p95 = p95;
+	}
 
 	/**
 	 * Gets the power (watt) of this VM.
@@ -722,13 +742,13 @@ public class Vm {
 		// Lin. Reg.
 		switch (cores) {
 			case 2:
-				return Math.max(-12.1318 * memory + 42.1 * percentUtilization + 120.023, 0.0);
+				return Math.max(-12.1318 * memory + 42.1 * avg_util + 120.023, 0.0);
 			case 4:
-				return Math.max(-0.792386 * memory + 40.41 * percentUtilization + 23.2432, 0.0);
+				return Math.max(-0.792386 * memory + 40.41 * avg_util + 23.2432, 0.0);
 			case 8:
-				return Math.max(42.1392 * percentUtilization + 16.6206, 0.0);
+				return Math.max(42.1392 * avg_util + 16.6206, 0.0);
 			default:
-				return Math.max(-0.0200128 * memory + 188.199 * percentUtilization + 112.653, 0.0);
+				return Math.max(-0.0200128 * memory + 188.199 * avg_util + 112.653, 0.0);
 		}
 	}
 
@@ -815,7 +835,7 @@ public class Vm {
 	 * @return
 	 */
 	public double getWaste() {
-		return getCost() * (1 - percentUtilization / 100);
+		return getCost() * (1 - avg_util / 100);
 	}
 
 	/**
@@ -832,9 +852,11 @@ public class Vm {
 				"user id: " + getUserId(),
 				"ram (GB): "+ getRam() / 1000,
 				"cpu count: " + getNumberOfPes());
-		if(getAverageMOER() != 0) out += String.format(", %18s, %28s, %s",
+		out += String.format(", %18s, %28s, %28s, %15s, %s",
 				"pow: " + String.format("%.2f", getPower()),
-				"avg percent CPU util: " + String.format("%.2f", percentUtilization),
+				"avg percent CPU util: " + String.format("%.2f", avg_util),
+				"max percent CPU util: " + String.format("%.2f", max_util),
+				"p95: " + String.format("%.2f", p95),
 				"start & end: (" + start + ", " + end + ")");
 		return out;
 	}

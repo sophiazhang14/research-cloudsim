@@ -7,6 +7,7 @@ import org.cloudbus.cloudsim.provisioners.RamProvisionerSimple;
 import java.io.*;
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -57,7 +58,7 @@ public class AlgRunner {
         // In this example, it will have only one core.
         List<Pe> peList = new ArrayList<>();
 
-        int mips = Integer.MAX_VALUE;
+        int mips = 100_000;
 
         // 3. Create PEs and add these into a list.
         peList.add(new Pe(0, new PeProvisionerSimple(mips))); // need to store Pe id and MIPS Rating
@@ -167,7 +168,7 @@ public class AlgRunner {
      *
      * @throws IOException b/c reading from file...
      */
-    private static void init_VMs(Supplier<double[]> carbon_adjuster, Function<String[], String[]> vm_adjuster) throws IOException
+    private static void init_VMs(Supplier<double[]> carbon_adjuster, Consumer<Vm> vm_adjuster) throws IOException
     {
 
         //Fourth step: Create VMs
@@ -190,9 +191,6 @@ public class AlgRunner {
             boolean missingValue = false; for(String s : values) if(s.equals("")) {missingValue = true; break;}
             if(missingValue) continue;
 
-            // adjust this vm's resouces to reduce cost if possible
-            values = vm_adjuster.apply(values);
-
             int
                     vmid = vmlist.size(), // Vm ID
                     ram = (values[7].equals(">64")) ? 70 :
@@ -206,7 +204,9 @@ public class AlgRunner {
                     startTime = 300 * (int)(Double.parseDouble(values[0])),
                     endTime = 300 * (int)(Double.parseDouble(values[1]));
             double
-                    avgUtil = Double.parseDouble(values[3]);
+                    avgUtil = Double.parseDouble(values[3]),
+                    maxUtil = Double.parseDouble(values[2]),
+                    p95 = Double.parseDouble(values[4]);
             String
                     vmm = "Windows Hyper-V"; // Azure uses this virtual machine manager (hypervisor)
 
@@ -221,6 +221,8 @@ public class AlgRunner {
                     size,
                     vmm,
                     avgUtil,
+                    maxUtil,
+                    p95,
                     startTime,
                     endTime,
                     MOER,
@@ -236,6 +238,13 @@ public class AlgRunner {
         for(int i = 0; i < numVMs; i++)
         {
             Vm currVm = vmlist.get(i);
+
+            //System.out.println(currVm);
+
+            vm_adjuster.accept(currVm);
+
+            //System.out.println(currVm);
+            //System.out.println();
 
             int pesNumber=1;
             long length = (long) (currVm.getTime()[1] - currVm.getTime()[0]) * (long) currVm.getMips();
@@ -265,7 +274,7 @@ public class AlgRunner {
      * initialize data: CloudSim, datacenters, broker, VMs, MOER.
      * (calls init_MOER + init_VMs + init_datacenters)
      */
-    private static void init_data(Supplier<double[]> carbon_adjuster, Function<String[], String[]> vm_adjuster) {
+    private static void init_data(Supplier<double[]> carbon_adjuster, Consumer<Vm> vm_adjuster) {
         vmlist = new ArrayList<>(); vmflist = new ArrayList<>();
         cloudletList = new ArrayList<>();
         MOER = new ArrayList<>(); PMOER = new ArrayList<>();
@@ -324,7 +333,7 @@ public class AlgRunner {
      * @param svmlp path to the output file to contain adjusted vms
      * @return returns an array: {[carbon that was emitted (lbs CO2)], [wasted money ($)]}
      */
-    public static double[] runCycle(String name, Supplier<double[]> save_carbon, Function<String[], String[]> vm_adjuster, String sp, String svmlp)
+    public static double[] runCycle(String name, Supplier<double[]> save_carbon, Consumer<Vm> vm_adjuster, String sp, String svmlp)
     {
         Log.print("\n\n\n\n\n");
         Log.printLine("|--------------SIMULATION WITH \'" + name.toUpperCase() +"\' STARTS HERE--------------|");
@@ -383,7 +392,6 @@ public class AlgRunner {
      */
     private static void printCloudletList(List<Cloudlet> list, OutputStream ostream)
     {
-        System.out.println("saving cloudlet list");
         lastCarbon = 0.0;
         lastWaste = 0.0;
         OutputStream prevOStream = Log.getOutput();
@@ -424,7 +432,6 @@ public class AlgRunner {
         }
 
         Log.setOutput(prevOStream);
-        System.out.println("done");
     }
 
     /**
@@ -434,7 +441,6 @@ public class AlgRunner {
      */
     private static void printVMList(List<Vm> list, OutputStream ostream)
     {
-        System.out.println("saving vm list");
         OutputStream prevOStream = Log.getOutput();
         Log.setOutput(ostream);
         Log.formatLine("%-14s, %-12s, %-12s, %-14s, %-18s, %-16s, %-14s, %-14s", "vm id (in sim)", "user id", "ram (GB)", "num CPU", "power (watt)", "avg. util (%)", "start (sec)", "end (sec)");
@@ -446,12 +452,11 @@ public class AlgRunner {
                     vm.getRam() / 1000,
                     vm.getNumberOfPes(),
                     String.format("%.2f", vm.getPower()),
-                    String.format("%.2f", vm.getPercentUtilization()),
+                    String.format("%.2f", vm.getAvg_util()),
                     vm.getTime()[0],
                     vm.getTime()[1]);
         }
         Log.setOutput(prevOStream);
-        System.out.println("done");
     }
 
     /**

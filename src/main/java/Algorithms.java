@@ -3,12 +3,14 @@ import org.cloudbus.cloudsim.Vm;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
 
 public class Algorithms {
 
     // algorithm constants
 
     // realizing that not all users will accept the suggestions, we add an 'acceptanct rate'
+    /** note to dev: setting all to 1 for consistency when finding max possible emissions*/
     private static final double AUI_acceptance = 1, AUMA_acceptance = 1;
     private static final double shutdown_acceptance = 1, core_reduction_acceptance = 1;
 
@@ -33,7 +35,7 @@ public class Algorithms {
     public static double[] runAUI()
     {
         //TODO: find suitable moer threshold
-        final int moer_thresh = 800;
+        final int moer_thresh = 810;
         final int day = 288;
 
         class mwindow
@@ -135,6 +137,8 @@ public class Algorithms {
         ArrayList<Integer> prefPMOER = new ArrayList<>(); prefPMOER.add(AlgRunner.PMOER.get(0));
         for(int i = 1; i < AlgRunner.PMOER.size(); i++) prefPMOER.add(prefPMOER.get(i - 1) + AlgRunner.PMOER.get(i));
 
+        final Function<Integer[], Integer> rsum = (Integer[] i) -> (prefPMOER.get(i[1]) - prefPMOER.get(i[0]));
+
         double sumDelay = 0.0;
         int numAcc = 0;
         for(Vm vm : AlgRunner.vmflist)
@@ -145,22 +149,26 @@ public class Algorithms {
 
             int vend = vm.getTime()[1] / 300,  vstart = vm.getTime()[0] / 300, runlength = vend - vstart;
 
-            int ni = vstart, nj = vend; double origMOER = vm.getAverageMOER();
+            // find and save to window with both:
+            // - the same time length as the vm runtime
+            // - the minimum average MOER
+            int ni = vstart, nj = vend; double origMOER = vm.getAveragePMOER();
             for(int i = vstart + 1; i + runlength < Math.min(vstart + 288, AlgRunner.PMOER.size()) - 1; i++) //todo: check for 1-off errors
             {
                 int j = i + runlength;
-                int wsum = prefPMOER.get(j) - prefPMOER.get(i),
-                pwsum = prefPMOER.get(j - 1) - prefPMOER.get(i - 1),
-                nwsum = prefPMOER.get(j + 1) - prefPMOER.get(i + 1);
-                double windMOER = (double)wsum / runlength, pWindMOER = (double) pwsum / runlength, nWindMOER = (double) nwsum / runlength;
+                double
+                        wavg = (double)rsum.apply(new Integer[]{i, j}) / runlength,
+                        pwavg = (double)rsum.apply(new Integer[]{i - 1, j - 1}) / runlength,
+                        navg = (double)rsum.apply(new Integer[]{i + 1, j + 1}) / runlength;
 
-                if(pWindMOER >= windMOER && nWindMOER >= windMOER && windMOER < origMOER - 100)
+                if(wavg <= pwavg && wavg <= navg && origMOER > wavg + 70)
                 {
                     ni = i; nj = j;
                     break;
                 }
             }
 
+            //if there was no change:
             if(ni == vstart && nj == vend) continue;
 
             // modify the start and end times of the vm according to the window found in loop above^
@@ -179,25 +187,29 @@ public class Algorithms {
     /**
      * Here, we apply the shutdown strategy on *one* given VM.
      * Shutdown Policy:
-     *      if (maximum cpu utilization) / (average cpu utilization) > 5, then recommend a shutdown
-     * @param vm_dat the VM to be adjusted (represented as a list of strings)
+     *      if (maximum cpu utilization) / (average cpu utilization) > 10, then recommend a shutdown
+     * @param vm the VM to be adjusted (represented as a list of strings)
      */
 
-    public static String[] runSD(String[] vm_dat)
+    public static void runSD(Vm vm)
     {
-        double max_util = Double.parseDouble(vm_dat[2]), avg_util = Double.parseDouble(vm_dat[3]);
-        int t_created = (int) Double.parseDouble(vm_dat[0]), t_deleted = (int) Double.parseDouble(vm_dat[1]), t_l = t_deleted - t_created;
+        double max_util = vm.getMax_util(), avg_util = vm.getAvg_util();
+        int t_created = vm.getTime()[0], t_deleted = vm.getTime()[1], t_l = t_deleted - t_created;
+
         // check criteria
-        if(max_util / avg_util <= 10) return vm_dat;
+        if(max_util / avg_util <= 10) return;
 
         // not all users will accept the recommendation.
-        if(Math.random() > shutdown_acceptance) return vm_dat;
+        if(Math.random() > shutdown_acceptance) return;
 
         //simulate shutting down the vm by reducing the runtime length here.
         int t_new_l = (int) (avg_util / max_util * t_l);
         int t_new_deleted = t_created + t_new_l;
-        vm_dat[1] = String.valueOf(t_new_deleted); vm_dat[8] = String.valueOf(t_new_l);
-        return vm_dat;
+        double new_avg_util = max_util,
+                new_p95 = -1; //cannot determine how p95 will change
+        vm.setAvg_util(new_avg_util);
+        vm.setP95(new_p95);
+        vm.setTime(new int[]{t_created, t_new_deleted});
     }
 
     /**
@@ -209,16 +221,16 @@ public class Algorithms {
      * - runtime length >= 3600 sec
      * X user has >= 100 VMs
      * - waste > $50
-     * @param vm_dat the data of the VM to be adjusted.
+     * @param vm the data of the VM to be adjusted.
      */
-    public static String[] runCR(String[] vm_dat)
-     {
-        int cpuCores = (int)(Double.parseDouble(vm_dat[6]));
-        double p95 = Double.parseDouble(vm_dat[4]);
-        double max_util = Double.parseDouble(vm_dat[2]), avg_util = Double.parseDouble(vm_dat[3]);
+    public static void runCR(Vm vm)
+    {
+        int cpuCores = vm.getNumberOfPes();
+        double p95 = vm.getP95();
+        double max_util = vm.getMax_util(), avg_util = vm.getAvg_util();
 
         // filter un-reducable vms
-        if(p95 >= p95thresh) return vm_dat;
+        if(p95 >= p95thresh) return;
 
         /*
         Code below is subject to change bc users might have more options for number of cores other than those listed in the array 'CC_VALS'
@@ -226,15 +238,25 @@ public class Algorithms {
 
         Current code assumes that the vm user can only change their core count to one count listed in 'CC_VALS'.
          */
-        int newCpuCores = (int)Math.ceil((double)cpuCores * p95 / p95thresh);
-        for(int corecount : CC_VALS) if(corecount >= newCpuCores) {newCpuCores = corecount; break;};
+        int newCpuCores = cpuCores; double new_p95 = p95, new_max_util = max_util, new_avg_util = avg_util;
+        for(int i = 0; i < CC_VALS.length; i++)
+        {
+            if(CC_VALS[i] > cpuCores) break;
+            new_p95 = p95 * cpuCores / CC_VALS[i];
+            new_max_util = max_util * cpuCores / CC_VALS[i];
+            new_avg_util = avg_util * cpuCores / CC_VALS[i];
+            if(new_p95 < p95thresh && new_max_util <= 100)
+            {
+                newCpuCores = CC_VALS[i];
+                break;
+            }
+        }
 
-        if(newCpuCores < cpuCores && Math.random() > core_reduction_acceptance) return vm_dat;
+        if(newCpuCores >= cpuCores || Math.random() > core_reduction_acceptance) return;
 
-        vm_dat[6] = String.valueOf(newCpuCores);
-        vm_dat[4] = String.valueOf(p95 * cpuCores / newCpuCores);
-        vm_dat[3] = String.valueOf(max_util * cpuCores / newCpuCores);
-        vm_dat[2] = String.valueOf(avg_util * cpuCores / newCpuCores);
-        return vm_dat;
+        vm.setNumberOfPes(newCpuCores);
+        vm.setP95(new_p95);
+        vm.setMax_util(new_max_util);
+        vm.setAvg_util(new_avg_util);
     }
 }
