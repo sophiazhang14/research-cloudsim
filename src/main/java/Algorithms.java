@@ -9,8 +9,8 @@ public class Algorithms {
     // algorithm constants
 
     // realizing that not all users will accept the suggestions, we add an 'acceptanct rate'
-    private static final double AUI_acceptance = 0.25, AUMA_acceptance = 0.2;
-    private static final double shutdown_acceptance = 0.65, core_reduction_acceptance = 0.7;
+    private static final double AUI_acceptance = 1, AUMA_acceptance = 1;
+    private static final double shutdown_acceptance = 1, core_reduction_acceptance = 1;
 
     // contains all possible core counts of vms
     private static final int[] CC_VALS = new int[]{2, 4, 8, 12, 24, 30};
@@ -33,7 +33,7 @@ public class Algorithms {
     public static double[] runAUI()
     {
         //TODO: find suitable moer threshold
-        final int moer_thresh = 810;
+        final int moer_thresh = 800;
         final int day = 288;
 
         class mwindow
@@ -145,22 +145,23 @@ public class Algorithms {
 
             int vend = vm.getTime()[1] / 300,  vstart = vm.getTime()[0] / 300, runlength = vend - vstart;
 
-            // find and save to window with both:
-            // - the same time length as the vm runtime
-            // - the minimum average MOER
-            int ni = vstart, nj = vend; double minMOER = vm.getAverageMOER();
-            for(int i = vstart + 1; i + runlength < Math.min(vstart + 288, AlgRunner.PMOER.size()); i++) //todo: check for 1-off errors
+            int ni = vstart, nj = vend; double origMOER = vm.getAverageMOER();
+            for(int i = vstart + 1; i + runlength < Math.min(vstart + 288, AlgRunner.PMOER.size()) - 1; i++) //todo: check for 1-off errors
             {
                 int j = i + runlength;
-                int wsum = prefPMOER.get(j) - prefPMOER.get(i);
-                double avgMOER = (double)wsum / (j - i);
+                int wsum = prefPMOER.get(j) - prefPMOER.get(i),
+                pwsum = prefPMOER.get(j - 1) - prefPMOER.get(i - 1),
+                nwsum = prefPMOER.get(j + 1) - prefPMOER.get(i + 1);
+                double windMOER = (double)wsum / runlength, pWindMOER = (double) pwsum / runlength, nWindMOER = (double) nwsum / runlength;
 
-                if(avgMOER < minMOER)
+                if(pWindMOER >= windMOER && nWindMOER >= windMOER && windMOER < origMOER - 100)
                 {
-                    minMOER = avgMOER;
                     ni = i; nj = j;
+                    break;
                 }
             }
+
+            if(ni == vstart && nj == vend) continue;
 
             // modify the start and end times of the vm according to the window found in loop above^
             int nstart = ni * 300, nend = nj * 300;
@@ -211,7 +212,7 @@ public class Algorithms {
      * @param vm_dat the data of the VM to be adjusted.
      */
     public static String[] runCR(String[] vm_dat)
-    {
+     {
         int cpuCores = (int)(Double.parseDouble(vm_dat[6]));
         double p95 = Double.parseDouble(vm_dat[4]);
         double max_util = Double.parseDouble(vm_dat[2]), avg_util = Double.parseDouble(vm_dat[3]);

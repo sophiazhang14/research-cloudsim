@@ -67,7 +67,7 @@ public class SimMain {
     // these contain the carbon and waste produced by their corresponding simulation, indicated by their name.
     private static double[] noAlg_dat, shutdown_dat, core_reduction_dat, AUI_dat, AUMA_dat, AUI_CR_dat, AUMA_CR_dat, AUI_SD_dat, AUMA_SD_dat;
 
-    private static final int numVMs = 1000;
+    private static final int numVMs = 10000;
 
     public static void main(String[] args)
     {
@@ -75,6 +75,7 @@ public class SimMain {
         try{
             logStream = new FileOutputStream("simulation_logs.txt");
             Log.setOutput(logStream);
+            Log.setDisabled(false);
         }catch(Exception ex){
             System.out.println("wtf");
             return;
@@ -98,10 +99,6 @@ public class SimMain {
         // moer-based + core reduction
         AUI_CR_dat = AlgRunner.runCycle("AUI and CR", Algorithms::runAUI, Algorithms::runCR, sim_AUI_CR, svm_AUMA_CR);
         AUMA_CR_dat = AlgRunner.runCycle("AUMA and CR", Algorithms::runAUMA, Algorithms::runCR, sim_AUMA_CR, svm_AUMA_CR);
-
-        // moer-based + shutdown
-        AUI_SD_dat = AlgRunner.runCycle("AUI and SD", Algorithms::runAUI, Algorithms::runSD, sim_AUI_SD, svm_AUI_SD);
-        AUMA_SD_dat = AlgRunner.runCycle("AUMA and SD", Algorithms::runAUMA, Algorithms::runSD, sim_AUMA_SD, svm_AUMA_SD);
     }
 
 }

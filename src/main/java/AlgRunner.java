@@ -57,7 +57,7 @@ public class AlgRunner {
         // In this example, it will have only one core.
         List<Pe> peList = new ArrayList<>();
 
-        int mips = 100_000;
+        int mips = Integer.MAX_VALUE;
 
         // 3. Create PEs and add these into a list.
         peList.add(new Pe(0, new PeProvisionerSimple(mips))); // need to store Pe id and MIPS Rating
@@ -383,6 +383,7 @@ public class AlgRunner {
      */
     private static void printCloudletList(List<Cloudlet> list, OutputStream ostream)
     {
+        System.out.println("saving cloudlet list");
         lastCarbon = 0.0;
         lastWaste = 0.0;
         OutputStream prevOStream = Log.getOutput();
@@ -423,6 +424,7 @@ public class AlgRunner {
         }
 
         Log.setOutput(prevOStream);
+        System.out.println("done");
     }
 
     /**
@@ -432,6 +434,7 @@ public class AlgRunner {
      */
     private static void printVMList(List<Vm> list, OutputStream ostream)
     {
+        System.out.println("saving vm list");
         OutputStream prevOStream = Log.getOutput();
         Log.setOutput(ostream);
         Log.formatLine("%-14s, %-12s, %-12s, %-14s, %-18s, %-16s, %-14s, %-14s", "vm id (in sim)", "user id", "ram (GB)", "num CPU", "power (watt)", "avg. util (%)", "start (sec)", "end (sec)");
@@ -448,6 +451,7 @@ public class AlgRunner {
                     vm.getTime()[1]);
         }
         Log.setOutput(prevOStream);
+        System.out.println("done");
     }
 
     /**
