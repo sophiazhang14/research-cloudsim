@@ -25,7 +25,7 @@ public class AlgRunner {
 
     private static final DecimalFormat dft = new DecimalFormat("##############0.###");
 
-    private static int numVMs;
+    private static int numVMs, numDCs = 1;
 
     // lists
     private static List<Cloudlet> cloudletList;
@@ -41,6 +41,8 @@ public class AlgRunner {
     public static double lastCarbon, lastWaste;
     public static double[] lastDelay;
 
+    private static long lastStart;
+
     // constructor sets the input paths
     public AlgRunner(String vm_path, String moer_path, int numVMs){this.vm_path = vm_path; this.moer_path = moer_path; this.numVMs = numVMs;}
 
@@ -54,32 +56,34 @@ public class AlgRunner {
         //    our machine
         List<Host> hostList = new ArrayList<>();
 
-        // 2. A Machine contains one or more PEs or CPUs/Cores.
-        // In this example, it will have only one core.
-        List<Pe> peList = new ArrayList<>();
+        for(int i = 0; i < 1000; i++) {
+            // 2. A Machine conta
+            // ins one or more PEs or CPUs/Cores.
+            // In this example, it will have only one core.
+            List<Pe> peList = new ArrayList<>();
 
-        int mips = 100_000;
+            int mips = Integer.MAX_VALUE;
 
-        // 3. Create PEs and add these into a list.
-        peList.add(new Pe(0, new PeProvisionerSimple(mips))); // need to store Pe id and MIPS Rating
+            // 3. Create PEs and add these into a list.
+            peList.add(new Pe(i, new PeProvisionerSimple(mips))); // need to store Pe id and MIPS Rating
 
-        //4. Create Host with its id and list of PEs and add them to the list of machines
-        int hostId=0;
-        int ram = Integer.MAX_VALUE; //host memory (MB)
-        long storage = Integer.MAX_VALUE; //host storage
-        int bw = Integer.MAX_VALUE;
+            //4. Create Host with its id and list of PEs and add them to the list of machines
+            int hostId = i;
+            int ram = Integer.MAX_VALUE; //host memory (MB)
+            long storage = Integer.MAX_VALUE; //host storage
+            int bw = Integer.MAX_VALUE;
 
-        hostList.add(
-                new Host(
-                        hostId,
-                        new RamProvisionerSimple(ram),
-                        new BwProvisionerSimple(bw),
-                        storage,
-                        peList,
-                        new VmSchedulerTimeShared(peList)
-                )
-        ); // This is our machine
-
+            hostList.add(
+                    new Host(
+                            hostId,
+                            new RamProvisionerSimple(ram),
+                            new BwProvisionerSimple(bw),
+                            storage,
+                            peList,
+                            new VmSchedulerTimeShared(peList)
+                    )
+            ); // This is our machine
+        }
 
         // 5. Create a DatacenterCharacteristics object that stores the
         //    properties of a data center: architecture, OS, list of
@@ -275,10 +279,11 @@ public class AlgRunner {
      * (calls init_MOER + init_VMs + init_datacenters)
      */
     private static void init_data(Supplier<double[]> carbon_adjuster, Consumer<Vm> vm_adjuster) {
+        startHere();
         vmlist = new ArrayList<>(); vmflist = new ArrayList<>();
         cloudletList = new ArrayList<>();
         MOER = new ArrayList<>(); PMOER = new ArrayList<>();
-        datacenters = new Datacenter[100];
+        datacenters = new Datacenter[numDCs];
 
         // First step: Initialize the CloudSim package. It should be called
         // before creating any entities.
@@ -312,6 +317,7 @@ public class AlgRunner {
 
         //bind the cloudlets to the vms.
         for(int i = 0; i < vmlist.size(); i++) broker.bindCloudletToVm(cloudletList.get(i).getCloudletId(), vmlist.get(i).getId());
+        printDuration("initialize data");
     }
 
 
@@ -356,7 +362,7 @@ public class AlgRunner {
 
     private static void simRun(String cloudletFN, String vmFN)
     {
-
+        startHere();
         // Sixth step: Starts the simulation
         CloudSim.startSimulation();
 
@@ -365,7 +371,7 @@ public class AlgRunner {
         List<Cloudlet> newList = broker.getCloudletReceivedList();
 
         CloudSim.stopSimulation();
-
+        printDuration("run cloudSim");
         try
         {
             FileOutputStream vmstream = new FileOutputStream(vmFN);
@@ -470,5 +476,18 @@ public class AlgRunner {
                 "Average postponement of runtime over all VMs: " + dft.format(lastDelay[0]) + " hrs\n" +
                 "Average postponement of postponed VMs: " + dft.format(lastDelay[1]) + " hrs\n" +
                 "\n\n");
+    }
+
+
+    //-------------Below are diagnostic functions----------//
+
+    private static void startHere()
+    {
+        lastStart = System.currentTimeMillis();
+    }
+
+    private static void printDuration(String s)
+    {
+        System.out.println("Took " + dft.format((double)(System.currentTimeMillis() - lastStart) / 1000) + "s to " + s);
     }
 }

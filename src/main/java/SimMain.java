@@ -67,7 +67,7 @@ public class SimMain {
     // these contain the carbon and waste produced by their corresponding simulation, indicated by their name.
     private static double[] noAlg_dat, shutdown_dat, core_reduction_dat, AUI_dat, AUMA_dat, AUI_CR_dat, AUMA_CR_dat, AUI_SD_dat, AUMA_SD_dat;
 
-    private static final int numVMs = 1000;
+    private static final int numVMs = 10000;
 
     public static void main(String[] args)
     {
@@ -75,6 +75,7 @@ public class SimMain {
         try{
             logStream = new FileOutputStream("simulation_logs.txt");
             Log.setOutput(logStream);
+            Log.setDisabled(true);
         }catch(Exception ex){
             System.out.println("wtf");
             return;

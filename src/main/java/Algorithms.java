@@ -1,5 +1,6 @@
 import org.cloudbus.cloudsim.Vm;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -22,6 +23,10 @@ public class Algorithms {
     private static final double p95thresh = 80.0;
 
 
+    private static long lastStart;
+    private static final DecimalFormat dft = new DecimalFormat("##############0.########");
+
+
     /**---------------------------------------------- MOER BASED ALGORITHMS START HERE -------------------------------------------------*/
 
     /**
@@ -34,7 +39,8 @@ public class Algorithms {
      */
     public static double[] runAUI()
     {
-        //TODO: find suitable moer threshold
+        startHere();
+        // adjustable moer threshold
         final int moer_thresh = 810;
         final int day = 288;
 
@@ -124,6 +130,7 @@ public class Algorithms {
             }
         }
 
+        printDuration("run AUI");
         double averageDelay = sumDelay / AlgRunner.vmlist.size(); // in seconds
         return new double[]{averageDelay / 3600, sumDelay / numAcc / 3600}; // in hrs
     }
@@ -134,8 +141,10 @@ public class Algorithms {
      */
     public static double[] runAUMA()
     {
+        startHere();
         ArrayList<Integer> prefPMOER = new ArrayList<>(); prefPMOER.add(AlgRunner.PMOER.get(0));
-        for(int i = 1; i < AlgRunner.PMOER.size(); i++) prefPMOER.add(prefPMOER.get(i - 1) + AlgRunner.PMOER.get(i));
+        for(int i = 1; i < AlgRunner.PMOER.size(); i++)
+            prefPMOER.add(prefPMOER.get(i - 1) + AlgRunner.PMOER.get(i));
 
         final Function<Integer[], Integer> rsum = (Integer[] i) -> (prefPMOER.get(i[1]) - prefPMOER.get(i[0]));
 
@@ -153,7 +162,7 @@ public class Algorithms {
             // - the same time length as the vm runtime
             // - the minimum average MOER
             int ni = vstart, nj = vend; double origMOER = vm.getAveragePMOER();
-            for(int i = vstart + 1; i + runlength < Math.min(vstart + 288, AlgRunner.PMOER.size()) - 1; i++) //todo: check for 1-off errors
+            for(int i = vstart + 1; i + runlength < Math.min(vstart + 288, AlgRunner.PMOER.size()) - 1; i++)
             {
                 int j = i + runlength;
                 double
@@ -178,6 +187,7 @@ public class Algorithms {
             vm.setTime(new int[]{nstart, nend});
         }
 
+        printDuration("run AUMA");
         double averageDelay = sumDelay / AlgRunner.vmlist.size(); // in seconds
         return new double[]{averageDelay / 3600, sumDelay / numAcc / 3600}; // in hrs
     }
@@ -258,5 +268,18 @@ public class Algorithms {
         vm.setP95(new_p95);
         vm.setMax_util(new_max_util);
         vm.setAvg_util(new_avg_util);
+    }
+
+
+    //-------------Below are diagnostic functions----------//
+
+    private static void startHere()
+    {
+        lastStart = System.nanoTime();
+    }
+
+    private static void printDuration(String s)
+    {
+        System.out.println("Took " + dft.format((double)(System.nanoTime() - lastStart) / 1e9) + "s to " + s);
     }
 }
