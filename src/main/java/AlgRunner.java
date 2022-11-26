@@ -25,7 +25,7 @@ public class AlgRunner {
 
     private static final DecimalFormat dft = new DecimalFormat("##############0.###");
 
-    private static int numVMs, numDCs = 1;
+    private static int numVMs, numDCs = 2;
 
     // lists
     private static List<Cloudlet> cloudletList;
@@ -56,16 +56,16 @@ public class AlgRunner {
         //    our machine
         List<Host> hostList = new ArrayList<>();
 
-        for(int i = 0; i < 1000; i++) {
-            // 2. A Machine conta
-            // ins one or more PEs or CPUs/Cores.
+        for(int i = 0; i < 10; i++) {
+            // 2. A Machine contains one or more PEs or CPUs/Cores.
             // In this example, it will have only one core.
             List<Pe> peList = new ArrayList<>();
 
-            int mips = Integer.MAX_VALUE;
+            int mips = Integer.MAX_VALUE / 30;
 
             // 3. Create PEs and add these into a list.
-            peList.add(new Pe(i, new PeProvisionerSimple(mips))); // need to store Pe id and MIPS Rating
+            for(int j = 0; j < 30; j++)
+                peList.add(new Pe(i * 30 + j, new PeProvisionerSimple(mips))); // need to store Pe id and MIPS Rating
 
             //4. Create Host with its id and list of PEs and add them to the list of machines
             int hostId = i;
@@ -255,7 +255,7 @@ public class AlgRunner {
             long fileSize = 300;
             long outputSize = 300;
 
-            Cloudlet cloudlet1 =
+            Cloudlet cloudlet =
                     new Cloudlet(
                             i,
                             length,
@@ -266,9 +266,9 @@ public class AlgRunner {
                             utilizationModel,
                             utilizationModel,
                             currVm.getTime()[0]);
-            cloudlet1.setUserId(brokerId);
+            cloudlet.setUserId(brokerId);
 
-            cloudletList.add(cloudlet1);
+            cloudletList.add(cloudlet);
         }
 
         br.close();

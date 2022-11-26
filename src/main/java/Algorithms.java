@@ -15,6 +15,8 @@ public class Algorithms {
     private static final double AUI_acceptance = 1, AUMA_acceptance = 1;
     private static final double shutdown_acceptance = 1, core_reduction_acceptance = 1;
 
+    private static final double u_idle = 0.02;
+
     // contains all possible core counts of vms
     private static final int[] CC_VALS = new int[]{2, 4, 8, 12, 24, 30};
 
@@ -192,35 +194,9 @@ public class Algorithms {
         return new double[]{averageDelay / 3600, sumDelay / numAcc / 3600}; // in hrs
     }
 
+
     /**---------------------------------------------- VM BASED ALGORITHMS START HERE -------------------------------------------------*/
 
-    /**
-     * Here, we apply the shutdown strategy on *one* given VM.
-     * Shutdown Policy:
-     *      if (maximum cpu utilization) / (average cpu utilization) > 10, then recommend a shutdown
-     * @param vm the VM to be adjusted (represented as a list of strings)
-     */
-
-    public static void runSD(Vm vm)
-    {
-        double max_util = vm.getMax_util(), avg_util = vm.getAvg_util();
-        int t_created = vm.getTime()[0], t_deleted = vm.getTime()[1], t_l = t_deleted - t_created;
-
-        // check criteria
-        if(max_util / avg_util <= 10) return;
-
-        // not all users will accept the recommendation.
-        if(Math.random() > shutdown_acceptance) return;
-
-        //simulate shutting down the vm by reducing the runtime length here.
-        int t_new_l = (int) (avg_util / max_util * t_l);
-        int t_new_deleted = t_created + t_new_l;
-        double new_avg_util = max_util,
-                new_p95 = -1; //cannot determine how p95 will change
-        vm.setAvg_util(new_avg_util);
-        vm.setP95(new_p95);
-        vm.setTime(new int[]{t_created, t_new_deleted});
-    }
 
     /**
      * Here, we apply core-reduction on *one* given VM.
@@ -270,8 +246,37 @@ public class Algorithms {
         vm.setAvg_util(new_avg_util);
     }
 
+    /**
+     * Here, we apply the shutdown strategy on *one* given VM.
+     * @param vm the VM to be adjusted (represented as a list of strings)
+     */
 
-    //-------------Below are diagnostic functions----------//
+    public static void runSD(Vm vm)
+    {
+        double u_max = vm.getMax_util(), u_avg = vm.getAvg_util();
+        int t_created = vm.getTime()[0], t_deleted = vm.getTime()[1], t_full = t_deleted - t_created;
+
+        // check criteria
+        if((u_max - u_idle) / (u_avg - u_idle) <= 10) return;
+
+        // not all users will accept the recommendation.
+        if(Math.random() > shutdown_acceptance) return;
+        //System.out.println(vm.getCarbon());
+
+        //simulate shutting down the vm by reducing the runtime length here.
+        int t_max = (int) (t_full * (u_avg - u_idle) / (u_max - u_idle));
+        int t_new_deleted = t_created + t_max;
+        double new_avg_util = u_max,
+                new_p95 = u_max; //cannot determine how p95 will change
+        vm.setAvg_util(new_avg_util);
+        vm.setP95(new_p95);
+        vm.setTime(new int[]{t_created, t_new_deleted});
+        //System.out.println(vm.getCarbon());
+        //System.out.println();
+    }
+
+
+    /**-------------Below are diagnostic functions----------*/
 
     private static void startHere()
     {
