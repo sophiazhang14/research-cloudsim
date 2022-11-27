@@ -8,7 +8,6 @@ import java.io.*;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class AlgRunner {
@@ -26,6 +25,7 @@ public class AlgRunner {
     private static final DecimalFormat dft = new DecimalFormat("##############0.###");
 
     private static int numVMs, numDCs = 2;
+    private static boolean fast;
 
     // lists
     private static List<Cloudlet> cloudletList;
@@ -42,10 +42,14 @@ public class AlgRunner {
     public static double[] lastDelay;
 
     private static long lastStart;
+    private static double[] baseResult;
 
     // constructor sets the input paths
-    public AlgRunner(String vm_path, String moer_path, int numVMs){this.vm_path = vm_path; this.moer_path = moer_path; this.numVMs = numVMs;}
-
+    public AlgRunner(String vm_path, String moer_path, int numVMs, boolean fast) throws IOException {this.baseResult = null; this.vm_path = vm_path; this.moer_path = moer_path; this.numVMs = numVMs; this.fast = fast; this.MOER = new ArrayList<>(); this.PMOER = new ArrayList<>(); init_MOER();}
+    public static void setBaseResult(double[] result)
+    {
+        baseResult = result;
+    }
     //------------Below are initialization functions------------//
 
     private static Datacenter createDatacenter(String name)
@@ -239,7 +243,7 @@ public class AlgRunner {
 
         lastDelay = carbon_adjuster.get(); // adjust all vms' start+end times to reduce moer if possible
 
-        for(int i = 0; i < numVMs; i++)
+        for(int i = 0; i < vmlist.size(); i++)
         {
             Vm currVm = vmlist.get(i);
 
@@ -249,6 +253,9 @@ public class AlgRunner {
 
             //System.out.println(currVm);
             //System.out.println();
+
+            // skip pointless stuff
+            if(fast) continue;
 
             int pesNumber=1;
             long length = (long) (currVm.getTime()[1] - currVm.getTime()[0]) * (long) currVm.getMips();
@@ -272,6 +279,7 @@ public class AlgRunner {
         }
 
         br.close();
+        System.out.println("Number of VMs included in simulation: " + vmlist.size() + "\n|\nV");
     }
 
     /**
@@ -282,7 +290,6 @@ public class AlgRunner {
         startHere();
         vmlist = new ArrayList<>(); vmflist = new ArrayList<>();
         cloudletList = new ArrayList<>();
-        MOER = new ArrayList<>(); PMOER = new ArrayList<>();
         datacenters = new Datacenter[numDCs];
 
         // First step: Initialize the CloudSim package. It should be called
@@ -300,7 +307,6 @@ public class AlgRunner {
         // Fourth step: create vms
         broker = createBroker();
         try{
-            init_MOER();
             init_VMs(carbon_adjuster, vm_adjuster);
         }
         catch (Exception ex) // data initialization from .csv failed somehow
@@ -316,7 +322,7 @@ public class AlgRunner {
 
 
         //bind the cloudlets to the vms.
-        for(int i = 0; i < vmlist.size(); i++) broker.bindCloudletToVm(cloudletList.get(i).getCloudletId(), vmlist.get(i).getId());
+        if(!fast) for(int i = 0; i < vmlist.size(); i++) broker.bindCloudletToVm(cloudletList.get(i).getCloudletId(), vmlist.get(i).getId());
         printDuration("initialize data");
     }
 
@@ -355,23 +361,25 @@ public class AlgRunner {
          * Writes new cloudlet results to file
          * Writes vms (with now adjusted times) that were simulated to file
          */
-        simRun(sp, svmlp);
+        if (!fast) simRunDisplay(sp, svmlp);
+        else simRunFast(); // this doesn't write cloudlet/vm info to the files but that can be easily added if needed in the future.
         printResults(name);
         return new double[]{lastCarbon, lastWaste, lastDelay[0], lastDelay[1]};
     }
 
-    private static void simRun(String cloudletFN, String vmFN)
+    /**
+     * use when want to output more stuff
+     * */
+    private static void simRunDisplay(String cloudletFN, String vmFN)
     {
         startHere();
-        // Sixth step: Starts the simulation
         CloudSim.startSimulation();
 
 
-        // Final step: Print results when simulation is over
         List<Cloudlet> newList = broker.getCloudletReceivedList();
 
         CloudSim.stopSimulation();
-        printDuration("run cloudSim");
+        printDuration("run disp. cloudSim");
         try
         {
             FileOutputStream vmstream = new FileOutputStream(vmFN);
@@ -384,6 +392,19 @@ public class AlgRunner {
         {
             ex.printStackTrace();
         }
+    }
+
+    /**
+     * made a new sim function. reason: simRunDisplay is too slow
+     * much simpler and faster "version" of cloudSim that only does what we need it to, with minimal amounts of head-cracking.
+     * */
+    private static void simRunFast()
+    {
+        //step 1: loop over vms.
+        lastCarbon = 0; lastWaste = 0; startHere();
+        for(Vm vm : vmlist) {lastCarbon += vm.getCarbon(); lastWaste += vm.getWaste();}
+        printDuration("run faster simulation");
+        //step 2: finished -_-
     }
 
 
@@ -475,8 +496,12 @@ public class AlgRunner {
                 "Total carbon emitted: " + dft.format(lastCarbon) + " lbs CO2\n" +
                 "Total money wasted by users: $" + dft.format(lastWaste) + "\n" +
                 "Average postponement of runtime over all VMs: " + dft.format(lastDelay[0]) + " hrs\n" +
-                "Average postponement of postponed VMs: " + dft.format(lastDelay[1]) + " hrs\n" +
-                "\n\n");
+                "Average postponement of postponed VMs: " + dft.format(lastDelay[1]) + " hrs");
+        if(baseResult != null)
+            System.out.print("\n" +
+                "Saved Carbon: " + dft.format(baseResult[0] - lastCarbon) + " lbs CO2\n" +
+                "Saved Money: $" + dft.format(baseResult[1] - lastWaste));
+        System.out.print("\n\n\n");
     }
 
 

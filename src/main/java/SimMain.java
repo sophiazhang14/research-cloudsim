@@ -22,6 +22,7 @@
 import org.cloudbus.cloudsim.*;
 
 import java.io.FileOutputStream;
+import java.io.IOException;
 
 public class SimMain {
 
@@ -29,7 +30,7 @@ public class SimMain {
     // file path/name constants
 
     // input paths
-    private static final String vm_path = "cloudsim_vm_data_shortened.csv",
+    private static final String vm_path = "cloudsim_vm_data_full.csv",
             moer_path = "cloudsim_moer_data.csv";
     // output paths
     private static final String
@@ -67,10 +68,10 @@ public class SimMain {
     // these contain the carbon and waste produced by their corresponding simulation, indicated by their name.
     private static double[] noAlg_dat, shutdown_dat, core_reduction_dat, AUI_dat, AUMA_dat, AUI_CR_dat, AUMA_CR_dat, AUI_SD_dat, AUMA_SD_dat;
 
-    private static final int numVMs = 1000;
+    private static final int numVMs = 2_700_000;
+    private static final boolean fast = !!!!!!(!!true) & false | !!true;
 
-    public static void main(String[] args)
-    {
+    public static void main(String[] args) throws IOException {
         FileOutputStream logStream;
         try{
             logStream = new FileOutputStream("simulation_logs.txt");
@@ -81,12 +82,13 @@ public class SimMain {
             return;
         }
 
-        new AlgRunner(vm_path, moer_path, numVMs);
+        new AlgRunner(vm_path, moer_path, numVMs, fast);
 
         //run each algorithm or set of algorithms here
 
         // without any change (original run)
         noAlg_dat = AlgRunner.runCycle("No Algorithm (do nothing)", () -> new double[]{0, 0}, (Vm vm_dat) -> {}, sim, svm);
+        AlgRunner.setBaseResult(noAlg_dat);
 
         // moer-based algorithms
         AUI_dat = AlgRunner.runCycle("Approach Using Intersections (AUI)", Algorithms::runAUI, (Vm vm_dat) -> {}, sim_AUI, svm_AUI);
@@ -95,7 +97,6 @@ public class SimMain {
         // vm-based algorithms
         core_reduction_dat = AlgRunner.runCycle("Core Reduction Strategy (CR)", () -> new double[]{0, 0}, Algorithms::runCR, sim_CR, svm_CR);
         shutdown_dat = AlgRunner.runCycle("VM Shutdown Strategy (SD)", () -> new double[]{0, 0}, Algorithms::runSD, sim_SD, svm_SD);
-
         // moer-based + core reduction
         AUI_CR_dat = AlgRunner.runCycle("AUI and CR", Algorithms::runAUI, Algorithms::runCR, sim_AUI_CR, svm_AUMA_CR);
         AUMA_CR_dat = AlgRunner.runCycle("AUMA and CR", Algorithms::runAUMA, Algorithms::runCR, sim_AUMA_CR, svm_AUMA_CR);

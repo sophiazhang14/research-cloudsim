@@ -19,7 +19,7 @@ public class Algorithms {
     private static final int moer_thresh = 810;
     private static final int day = 288;
 
-    private static final double u_idle = 0.02;
+    private static final double u_idle = 0.01;
 
     // contains all possible core counts of vms
     private static final int[] CC_VALS = new int[]{2, 4, 8, 12, 24, 30};
@@ -244,7 +244,6 @@ public class Algorithms {
      * Here, we apply the shutdown strategy on *one* given VM.
      * @param vm the VM to be adjusted (represented as a list of strings)
      */
-
     public static void runSD(Vm vm)
     {
         double u_max = vm.getMax_util(), u_avg = vm.getAvg_util();
@@ -255,18 +254,13 @@ public class Algorithms {
 
         // not all users will accept the recommendation.
         if(Math.random() > shutdown_acceptance) return;
-        //System.out.println(vm.getCarbon());
 
         //simulate shutting down the vm by reducing the runtime length here.
         int t_max = (int) (t_full * (u_avg - u_idle) / (u_max - u_idle));
         int t_new_deleted = t_created + t_max;
-        double new_avg_util = u_max,
-                new_p95 = u_max; //cannot determine how p95 will change
-        vm.setAvg_util(new_avg_util);
-        vm.setP95(new_p95);
+        vm.setAvg_util(u_max);
+        vm.setP95(u_max);
         vm.setTime(new int[]{t_created, t_new_deleted});
-        //System.out.println(vm.getCarbon());
-        //System.out.println();
     }
 
 
