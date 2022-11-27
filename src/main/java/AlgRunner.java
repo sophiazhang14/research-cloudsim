@@ -208,9 +208,9 @@ public class AlgRunner {
                     startTime = 300 * (int)(Double.parseDouble(values[0])),
                     endTime = 300 * (int)(Double.parseDouble(values[1]));
             double
-                    avgUtil = Double.parseDouble(values[3]),
-                    maxUtil = Double.parseDouble(values[2]),
-                    p95 = Double.parseDouble(values[4]);
+                    avgUtil = Double.parseDouble(values[3]) / 100,
+                    maxUtil = Double.parseDouble(values[2]) / 100,
+                    p95 = Double.parseDouble(values[4]) / 100;
             String
                     vmm = "Windows Hyper-V"; // Azure uses this virtual machine manager (hypervisor)
 
@@ -449,18 +449,19 @@ public class AlgRunner {
     {
         OutputStream prevOStream = Log.getOutput();
         Log.setOutput(ostream);
-        Log.formatLine("%-14s, %-12s, %-12s, %-14s, %-18s, %-16s, %-14s, %-14s", "vm id (in sim)", "user id", "ram (GB)", "num CPU", "power (watt)", "avg. util (%)", "start (sec)", "end (sec)");
+        Log.formatLine("%-10s, %-12s, %-12s, %-14s, %-18s, %-28s, %-28s, %-15s, %-28s",
+                "vm id",
+                "user id",
+                "ram (GB)",
+                "num CPU",
+                "power (watt)",
+                "avg. util (%)",
+                "max util (%)",
+                "p95 (%)",
+                "(start (s), end (s))");
         for(Vm vm : list)
         {
-            Log.formatLine("%-14s, %-12s, %-12s, %-14s, %-18s, %-16s, %-14s, %-14s",
-                    vm.getId(),
-                    vm.getUserId(),
-                    vm.getRam() / 1000,
-                    vm.getNumberOfPes(),
-                    String.format("%.2f", vm.getPower()),
-                    String.format("%.2f", vm.getAvg_util()),
-                    vm.getTime()[0],
-                    vm.getTime()[1]);
+            Log.printLine(vm.toString());
         }
         Log.setOutput(prevOStream);
     }

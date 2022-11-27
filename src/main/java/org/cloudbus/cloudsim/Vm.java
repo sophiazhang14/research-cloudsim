@@ -737,7 +737,7 @@ public class Vm {
 	 */
 	public double getPower() {
 		int cores = numberOfPes;
-		int memory = ram / 1000; // divide by 1000 bc GB --> MB
+		int memory = ram / 1000; // divide by 1000 bc MB --> GB
 
 		// Lin. Reg.
 		switch (cores) {
@@ -847,17 +847,17 @@ public class Vm {
 	public String toString()
 	{
 		String out;
-		out = String.format("%10s, %12s, %12s, %14s",
-				"vm id: " + getId(),
-				"user id: " + getUserId(),
-				"ram (GB): "+ getRam() / 1000,
-				"cpu count: " + getNumberOfPes());
-		out += String.format(", %18s, %28s, %28s, %15s, %s",
-				"pow: " + String.format("%.2f", getPower()),
-				"avg percent CPU util: " + String.format("%.2f", avg_util),
-				"max percent CPU util: " + String.format("%.2f", max_util),
-				"p95: " + String.format("%.2f", p95),
-				"start & end: (" + start + ", " + end + ")");
+		out = String.format("%-10s, %-12s, %-12s, %-14s",
+				getId(),
+				getUserId(),
+				getRam() / 1000,
+				getNumberOfPes());
+		out += String.format(", %-18s, %-28s, %-28s, %-15s, %-28s",
+				String.format("%.2f", getPower()),
+				String.format("%.2f", avg_util),
+				String.format("%.2f", max_util),
+				String.format("%.2f", p95),
+				"(" + start + ", " + end + ")");
 		return out;
 	}
 

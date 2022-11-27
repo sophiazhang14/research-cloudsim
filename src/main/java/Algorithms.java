@@ -10,10 +10,14 @@ public class Algorithms {
 
     // algorithm constants
 
-    // realizing that not all users will accept the suggestions, we add an 'acceptanct rate'
+    // realizing that not all users will accept the suggestions, we add an 'acceptance rate'
     /** note to dev: setting all to 1 for consistency when finding max possible emissions*/
     private static final double AUI_acceptance = 1, AUMA_acceptance = 1;
     private static final double shutdown_acceptance = 1, core_reduction_acceptance = 1;
+
+    // adjustable moer threshold
+    private static final int moer_thresh = 810;
+    private static final int day = 288;
 
     private static final double u_idle = 0.02;
 
@@ -22,7 +26,7 @@ public class Algorithms {
 
     // stores the threshold for the max p95.
     // it is assumed that once the cpu utilization exceeds this percentage, the vm will experience some kind of performance degradation or lag.
-    private static final double p95thresh = 80.0;
+    private static final double p95thresh = 0.8;
 
 
     private static long lastStart;
@@ -42,9 +46,6 @@ public class Algorithms {
     public static double[] runAUI()
     {
         startHere();
-        // adjustable moer threshold
-        final int moer_thresh = 810;
-        final int day = 288;
 
         class mwindow
         {
@@ -164,7 +165,7 @@ public class Algorithms {
             // - the same time length as the vm runtime
             // - the minimum average MOER
             int ni = vstart, nj = vend; double origMOER = vm.getAveragePMOER();
-            for(int i = vstart + 1; i + runlength < Math.min(vstart + 288, AlgRunner.PMOER.size()) - 1; i++)
+            for(int i = vstart + 1; i + runlength < Math.min(vstart + day, AlgRunner.PMOER.size()) - 1; i++)
             {
                 int j = i + runlength;
                 double
@@ -172,7 +173,7 @@ public class Algorithms {
                         pwavg = (double)rsum.apply(new Integer[]{i - 1, j - 1}) / runlength,
                         navg = (double)rsum.apply(new Integer[]{i + 1, j + 1}) / runlength;
 
-                if(wavg <= pwavg && wavg <= navg && origMOER > wavg + 70)
+                if(wavg <= pwavg && wavg <= navg && origMOER > wavg)
                 {
                     ni = i; nj = j;
                     break;
@@ -200,13 +201,6 @@ public class Algorithms {
 
     /**
      * Here, we apply core-reduction on *one* given VM.
-     * Core-reduction Policies:
-     * - cores > 2
-     * X Avg. CPU utilization <= 0.10
-     * - p95 < 0.80
-     * - runtime length >= 3600 sec
-     * X user has >= 100 VMs
-     * - waste > $50
      * @param vm the data of the VM to be adjusted.
      */
     public static void runCR(Vm vm)
@@ -231,7 +225,7 @@ public class Algorithms {
             new_p95 = p95 * cpuCores / CC_VALS[i];
             new_max_util = max_util * cpuCores / CC_VALS[i];
             new_avg_util = avg_util * cpuCores / CC_VALS[i];
-            if(new_p95 < p95thresh && new_max_util <= 100)
+            if(new_p95 < p95thresh && new_max_util <= 1)
             {
                 newCpuCores = CC_VALS[i];
                 break;
