@@ -31,7 +31,7 @@ public class SimMain {
 
     // input paths
     private static final String vm_path = "cloudsim_vm_data_full.csv",
-            moer_path = "cloudsim_moer_data.csv";
+            moer_path = "cloudsim_CASIO_NORTH_FULL.csv";
     // output paths
     private static final String
     sim = "sim.csv",
