@@ -85,7 +85,9 @@ public class SimMain {
         new AlgRunner(vm_path, moer_path, numVMs, fast);
 
         //run each algorithm or set of algorithms here
-
+        System.out.println("Reading from input files:\n\t" +
+                "- VM data from Microsoft Azure (" + vm_path + ")\n\t- " +
+                "MOER data from WattTime.com (" + moer_path + ")\n\n\n");
         // without any change (original run)
         noAlg_dat = AlgRunner.runCycle("No Algorithm (do nothing)", () -> new double[]{0, 0}, (Vm vm_dat) -> {}, sim, svm);
         AlgRunner.setBaseResult(noAlg_dat);

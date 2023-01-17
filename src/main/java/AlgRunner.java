@@ -279,7 +279,7 @@ public class AlgRunner {
         }
 
         br.close();
-        System.out.println("Number of VMs included in simulation: " + vmlist.size() + "\n|\nV");
+        System.out.println("Number of VMs included in simulation: " + vmlist.size());
     }
 
     /**

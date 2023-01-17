@@ -17,6 +17,7 @@ public class Algorithms {
 
     // adjustable moer threshold
     private static final int moer_thresh = 810;
+    private static final int c_auma = 50;
     private static final int day = 288;
 
     private static final double u_idle = 0.01;
@@ -26,8 +27,7 @@ public class Algorithms {
 
     // stores the threshold for the max p95.
     // it is assumed that once the cpu utilization exceeds this percentage, the vm will experience some kind of performance degradation or lag.
-    private static final double p95thresh = 0.8;
-
+    private static final double p95Thresh = 0.8, wThresh = 3;
 
     private static long lastStart;
     private static final DecimalFormat dft = new DecimalFormat("##############0.########");
@@ -169,11 +169,11 @@ public class Algorithms {
             {
                 int j = i + runlength;
                 double
-                        wavg = (double)rsum.apply(new Integer[]{i, j}) / runlength,
-                        pwavg = (double)rsum.apply(new Integer[]{i - 1, j - 1}) / runlength,
-                        navg = (double)rsum.apply(new Integer[]{i + 1, j + 1}) / runlength;
+                        wavg = (double) rsum.apply(new Integer[]{i, j}) / runlength,
+                        pwavg = (double) rsum.apply(new Integer[]{i - 1, j - 1}) / runlength,
+                        navg = (double) rsum.apply(new Integer[]{i + 1, j + 1}) / runlength;
 
-                if(wavg <= pwavg && wavg <= navg && origMOER > wavg)
+                if(wavg <= pwavg && wavg <= navg && origMOER - c_auma > wavg)
                 {
                     ni = i; nj = j;
                     break;
@@ -210,7 +210,10 @@ public class Algorithms {
         double max_util = vm.getMax_util(), avg_util = vm.getAvg_util();
 
         // filter un-reducable vms
-        if(p95 >= p95thresh) return;
+        if(p95 >= p95Thresh) return;
+
+        // filter vms with little effect
+        if(vm.getWaste() <= wThresh) return;
 
         /*
         Code below is subject to change bc users might have more options for number of cores other than those listed in the array 'CC_VALS'
@@ -225,7 +228,7 @@ public class Algorithms {
             new_p95 = p95 * cpuCores / CC_VALS[i];
             new_max_util = max_util * cpuCores / CC_VALS[i];
             new_avg_util = avg_util * cpuCores / CC_VALS[i];
-            if(new_p95 < p95thresh && new_max_util <= 1)
+            if(new_p95 < p95Thresh && new_max_util <= 1)
             {
                 newCpuCores = CC_VALS[i];
                 break;
@@ -242,7 +245,7 @@ public class Algorithms {
 
     /**
      * Here, we apply the shutdown strategy on *one* given VM.
-     * @param vm the VM to be adjusted (represented as a list of strings)
+     * @param vm the VM to be adjusted
      */
     public static void runSD(Vm vm)
     {
