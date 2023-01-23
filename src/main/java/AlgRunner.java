@@ -45,7 +45,10 @@ public class AlgRunner {
     private static double[] baseResult;
 
     // constructor sets the input paths
-    public AlgRunner(String vm_path, String moer_path, int numVMs, boolean fast) throws IOException {this.baseResult = null; this.vm_path = vm_path; this.moer_path = moer_path; this.numVMs = numVMs; this.fast = fast; this.MOER = new ArrayList<>(); this.PMOER = new ArrayList<>(); init_MOER();}
+    public AlgRunner(String vm_path, String moer_path, int numVMs, boolean fast) throws IOException
+    {
+        this.baseResult = null; this.vm_path = vm_path; this.moer_path = moer_path; this.numVMs = numVMs; this.fast = fast; this.MOER = new ArrayList<>(); this.PMOER = new ArrayList<>(); init_MOER();
+    }
     public static void setBaseResult(double[] result)
     {
         baseResult = result;
@@ -201,16 +204,13 @@ public class AlgRunner {
 
             int
                     vmid = vmlist.size(), // Vm ID
-                    ram = (values[7].equals(">64")) ? 70 :
-                            ((values[10].equals(">24"))? 30 :
-                                    (int)Double.parseDouble(values[7]) * 1000), //RAM in MB
-                    numCPUCore = (values[6].equals(">64")) ? 70 :
-                            ((values[9].equals(">24"))? 30: (int)Double.parseDouble(values[6])), //Number of CPUs requested
+                    ram = (int)Double.parseDouble(values[6]) * 1000, //RAM in MB
+                    numCPUCore = (int)Double.parseDouble(values[5]), //Number of CPUs requested
                     mips = 1000, // Million instructions per second (using default value of 1000)
                     bw = 1000, // bandwidth (using default value of 1000)
                     size = 10000, // idk what this size is specifically referring to
-                    startTime = 300 * (int)(Double.parseDouble(values[0])),
-                    endTime = 300 * (int)(Double.parseDouble(values[1]));
+                    startTime = (int)(Double.parseDouble(values[0])),
+                    endTime = (int)(Double.parseDouble(values[1]));
             double
                     avgUtil = Double.parseDouble(values[3]) / 100,
                     maxUtil = Double.parseDouble(values[2]) / 100,
@@ -492,15 +492,20 @@ public class AlgRunner {
      */
     private static void printResults(String algName)
     {
-        System.out.print(algName + ":\n" +
-                "Total carbon emitted: " + dft.format(lastCarbon) + " lbs CO2\n" +
-                "Total money wasted by users: $" + dft.format(lastWaste) + "\n" +
-                "Average postponement of runtime over all VMs: " + dft.format(lastDelay[0]) + " hrs\n" +
-                "Average postponement of postponed VMs: " + dft.format(lastDelay[1]) + " hrs");
+        System.out.print(algName + ":" +
+                ((SimMain.fullOutput) ?
+                    "\n" +
+                    "Total carbon emitted: " + dft.format(lastCarbon) + " lbs CO2\n" +
+                    "Total money wasted by users: $" + dft.format(lastWaste) + "\n" +
+                    "Average postponement of runtime over all VMs: " + dft.format(lastDelay[0]) + " hrs\n" +
+                    "Average postponement of postponed VMs: " + dft.format(lastDelay[1]) + " hrs"
+                    : "")
+        );
         if(baseResult != null)
             System.out.print("\n" +
                 "Saved Carbon: " + dft.format(baseResult[0] - lastCarbon) + " lbs CO2\n" +
-                "Saved Money: $" + dft.format(baseResult[1] - lastWaste));
+                "Saved Money: $" + dft.format(baseResult[1] - lastWaste)
+            );
         System.out.print("\n\n\n");
     }
 
@@ -514,6 +519,6 @@ public class AlgRunner {
 
     private static void printDuration(String s)
     {
-        System.out.println("Took " + dft.format((double)(System.currentTimeMillis() - lastStart) / 1000) + "s to " + s);
+        if(SimMain.fullOutput) System.out.println("Took " + dft.format((double)(System.currentTimeMillis() - lastStart) / 1000) + "s to " + s);
     }
 }

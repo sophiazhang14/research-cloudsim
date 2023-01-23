@@ -12,38 +12,83 @@ public class Algorithms {
 
     // realizing that not all users will accept the suggestions, we add an 'acceptance rate'
     /** note to dev: setting all to 1 for consistency when finding max possible emissions*/
-    private static final double AUI_acceptance = 1, AUMA_acceptance = 1;
-    private static final double shutdown_acceptance = 1, core_reduction_acceptance = 1;
+    private final double RT_acceptance = 1, RA_acceptance = 1;
+    private final double shutdown_acceptance = 1, core_reduction_acceptance = 1;
 
     // adjustable moer threshold
-    private static final int moer_thresh = 810;
-    private static final int c_auma = 50;
-    private static final int day = 288;
+    private int moer_thresh = 810;
+    private int confidence_thresh = 50;
+    private int day = 288;
 
-    private static final double u_idle = 0.01;
+    private double u_idle = 0.01;
 
     // contains all possible core counts of vms
-    private static final int[] CC_VALS = new int[]{2, 4, 8, 12, 24, 30};
+    private final int[] CC_VALS = new int[]{2, 4, 8, 12, 24, 30};
 
     // stores the threshold for the max p95.
     // it is assumed that once the cpu utilization exceeds this percentage, the vm will experience some kind of performance degradation or lag.
-    private static final double p95Thresh = 0.8, wThresh = 3;
+    private double p95Thresh = 0.8, wasteThresh = 5;
 
     private static long lastStart;
     private static final DecimalFormat dft = new DecimalFormat("##############0.########");
+    
+    public Algorithms(){
+        System.out.println(
+                "Params/assumptions being used: \n" +
+                        "\tRT: \n" +
+                        "\t\t- moer threshold: " + this.moer_thresh + "\n" +
+                        "\tRA: \n" +
+                        "\t\t- confidence threshold: " + this.confidence_thresh + "\n" +
+                        "\tCR: \n" +
+                        "\t\t- p95 threshold: " + this.p95Thresh + "\n" +
+                        "\t\t- waste threshold: " + this.wasteThresh + "\n" +
+                        "\tSD: \n" +
+                        "\t\t- u_idle: " + this.u_idle
+        );
+    }
 
+    /**
+     * Allows for adjusted behavior. Parameters can be adjusted in case of various locations.
+     * @param moer_thresh
+     * @param confidence_thresh
+     * @param u_idle
+     * @param p95Thresh
+     * @param wasteThresh
+     */
+    public Algorithms(Integer moer_thresh, Integer confidence_thresh, Double p95Thresh, Double wasteThresh, Double u_idle)
+    {
+        this.moer_thresh = (moer_thresh == null) ? this.moer_thresh: moer_thresh;
+        this.confidence_thresh = (confidence_thresh == null) ? this.confidence_thresh : confidence_thresh;
+        this.p95Thresh = (p95Thresh == null) ? this.p95Thresh: p95Thresh;
+        this.wasteThresh = (wasteThresh == null) ? this.wasteThresh: wasteThresh;
+        this.u_idle = (u_idle == null) ? this.u_idle: u_idle;
 
+        System.out.println(
+                "Params being used: \n" +
+                        "\tRT: \n" +
+                        "\t\t- moer threshold: " + this.moer_thresh + "\n" +
+                        "\tRA: \n" +
+                        "\t\t- confidence threshold: " + this.confidence_thresh + "\n" +
+                        "\tCR: \n" +
+                        "\t\t- p95 threshold: " + this.p95Thresh + "\n" +
+                        "\t\t- waste threshold: " + this.wasteThresh + "\n" +
+                        "\tSD: \n" +
+                        "\t\tu_idle" + this.u_idle
+        );
+    }
+    
+    
     /**---------------------------------------------- MOER BASED ALGORITHMS START HERE -------------------------------------------------*/
 
     /**
-     * Here, we apply first carbon-saving algorithm (which shows a faster runtime than the second method) mentioned in paper: approach using intersections (AUI).
-     *      For refrence: https://www.overleaf.com/project/631366e0dd56804a99c1de8a
+     * Here, we apply first carbon-saving algorithm (which shows a faster runtime than the second method) mentioned in paper: Rescheduling by Thresholds (RT).
+     *      For reference: <a href="https://www.overleaf.com/project/631366e0dd56804a99c1de8a">...</a>
      * This algorithm will adjust the start and end times of each vm such that they are moer-efficient (running at time with lower MOER).
      *
-     * @todo may develop a hybrid algorithm between AUI & AUMA to find a compromise between runtime and moer-efficiency (later).
+     * @todo may develop a hybrid algorithm between RT & RA to find a compromise between runtime and moer-efficiency (later).
      * @return the average delay of vms (over all vms including vms that were not adjusted) in hrs
      */
-    public static double[] runAUI()
+    public double[] runRT()
     {
         startHere();
 
@@ -62,20 +107,20 @@ public class Algorithms {
         List<mwindow> recWindows = new ArrayList<>();
 
         int sign, wstart = 0; double wavg = 0.0;
-        if (AlgRunner.PMOER.get(0) - moer_thresh >= 0) sign = 1;
+        if (AlgRunner.PMOER.get(0) - this.moer_thresh >= 0) sign = 1;
         else sign = -1;
         wavg += AlgRunner.PMOER.get(0);
 
         // find possible windows
         for(int i = 1; i < AlgRunner.PMOER.size(); i++)
         {
-            if (AlgRunner.PMOER.get(i) - moer_thresh >= 0 && sign == -1) // crossed threshold (below -> above)
+            if (AlgRunner.PMOER.get(i) - this.moer_thresh >= 0 && sign == -1) // crossed threshold (below -> above)
             {
                 wavg /= i - wstart;
                 sign = 1;
                 recWindows.add(new mwindow(wstart, i, wavg)); // add window to possible windows to recommend
             }
-            else if (AlgRunner.PMOER.get(i) - moer_thresh < 0 && sign == 1) // crossed threshold (above -> below)
+            else if (AlgRunner.PMOER.get(i) - this.moer_thresh < 0 && sign == 1) // crossed threshold (above -> below)
             {
                 wstart = i;
                 wavg = 0;
@@ -93,7 +138,7 @@ public class Algorithms {
         for(Vm vm : AlgRunner.vmflist)
         {
             // not all users will accept the suggestion. this will be simulated with 'acceptance'.
-            if(Math.random() > AUI_acceptance) continue;
+            if(Math.random() > RT_acceptance) continue;
 
 
             int vstart = vm.getTime()[0] / 300, vend = vm.getTime()[1] / 300;
@@ -133,16 +178,16 @@ public class Algorithms {
             }
         }
 
-        printDuration("run AUI");
+        printDuration("run RT");
         double averageDelay = sumDelay / AlgRunner.vmlist.size(); // in seconds
         return new double[]{averageDelay / 3600, sumDelay / numAcc / 3600}; // in hrs
     }
 
     /**
-     * Here, we apply our second algorithm, Aproach Using Moving Averages (AUMA).
+     * Here, we apply our second algorithm, Rescheduling by Averages (RA).
      * @return the average postponement of each vm (including vms that were not adjusted) in hrs.
      */
-    public static double[] runAUMA()
+    public double[] runRA()
     {
         startHere();
         ArrayList<Integer> prefPMOER = new ArrayList<>(); prefPMOER.add(AlgRunner.PMOER.get(0));
@@ -156,7 +201,7 @@ public class Algorithms {
         for(Vm vm : AlgRunner.vmflist)
         {
             // account for the chance that user declines suggestion here
-            if(Math.random() > AUMA_acceptance) continue;
+            if(Math.random() > this.RA_acceptance) continue;
 
 
             int vend = vm.getTime()[1] / 300,  vstart = vm.getTime()[0] / 300, runlength = vend - vstart;
@@ -165,7 +210,7 @@ public class Algorithms {
             // - the same time length as the vm runtime
             // - the minimum average MOER
             int ni = vstart, nj = vend; double origMOER = vm.getAveragePMOER();
-            for(int i = vstart + 1; i + runlength < Math.min(vstart + day, AlgRunner.PMOER.size()) - 1; i++)
+            for(int i = vstart + 1; i + runlength < Math.min(vstart + this.day, AlgRunner.PMOER.size()) - 1; i++)
             {
                 int j = i + runlength;
                 double
@@ -173,7 +218,7 @@ public class Algorithms {
                         pwavg = (double) rsum.apply(new Integer[]{i - 1, j - 1}) / runlength,
                         navg = (double) rsum.apply(new Integer[]{i + 1, j + 1}) / runlength;
 
-                if(wavg <= pwavg && wavg <= navg && origMOER - c_auma > wavg)
+                if(wavg <= pwavg && wavg <= navg && origMOER - this.confidence_thresh > wavg)
                 {
                     ni = i; nj = j;
                     break;
@@ -190,7 +235,7 @@ public class Algorithms {
             vm.setTime(new int[]{nstart, nend});
         }
 
-        printDuration("run AUMA");
+        printDuration("run RA");
         double averageDelay = sumDelay / AlgRunner.vmlist.size(); // in seconds
         return new double[]{averageDelay / 3600, sumDelay / numAcc / 3600}; // in hrs
     }
@@ -203,17 +248,17 @@ public class Algorithms {
      * Here, we apply core-reduction on *one* given VM.
      * @param vm the data of the VM to be adjusted.
      */
-    public static void runCR(Vm vm)
+    public void runCR(Vm vm)
     {
         int cpuCores = vm.getNumberOfPes();
         double p95 = vm.getP95();
         double max_util = vm.getMax_util(), avg_util = vm.getAvg_util();
 
         // filter un-reducable vms
-        if(p95 >= p95Thresh) return;
+        if(p95 >= this.p95Thresh) return;
 
         // filter vms with little effect
-        if(vm.getWaste() <= wThresh) return;
+        if(vm.getWaste() <= this.wasteThresh) return;
 
         /*
         Code below is subject to change bc users might have more options for number of cores other than those listed in the array 'CC_VALS'
@@ -222,20 +267,20 @@ public class Algorithms {
         Current code assumes that the vm user can only change their core count to one count listed in 'CC_VALS'.
          */
         int newCpuCores = cpuCores; double new_p95 = p95, new_max_util = max_util, new_avg_util = avg_util;
-        for(int i = 0; i < CC_VALS.length; i++)
+        for(int i = 0; i < this.CC_VALS.length; i++)
         {
-            if(CC_VALS[i] > cpuCores) break;
-            new_p95 = p95 * cpuCores / CC_VALS[i];
-            new_max_util = max_util * cpuCores / CC_VALS[i];
-            new_avg_util = avg_util * cpuCores / CC_VALS[i];
-            if(new_p95 < p95Thresh && new_max_util <= 1)
+            if(this.CC_VALS[i] > cpuCores) break;
+            new_p95 = p95 * cpuCores / this.CC_VALS[i];
+            new_max_util = max_util * cpuCores / this.CC_VALS[i];
+            new_avg_util = avg_util * cpuCores / this.CC_VALS[i];
+            if(new_p95 < this.p95Thresh && new_max_util <= 1)
             {
-                newCpuCores = CC_VALS[i];
+                newCpuCores = this.CC_VALS[i];
                 break;
             }
         }
 
-        if(newCpuCores >= cpuCores || Math.random() > core_reduction_acceptance) return;
+        if(newCpuCores >= cpuCores || Math.random() > this.core_reduction_acceptance) return;
 
         vm.setNumberOfPes(newCpuCores);
         vm.setP95(new_p95);
@@ -247,19 +292,19 @@ public class Algorithms {
      * Here, we apply the shutdown strategy on *one* given VM.
      * @param vm the VM to be adjusted
      */
-    public static void runSD(Vm vm)
+    public void runSD(Vm vm)
     {
         double u_max = vm.getMax_util(), u_avg = vm.getAvg_util();
         int t_created = vm.getTime()[0], t_deleted = vm.getTime()[1], t_full = t_deleted - t_created;
 
         // check criteria
-        if((u_max - u_idle) / (u_avg - u_idle) <= 10) return;
+        if((u_max - this.u_idle) / (u_avg - this.u_idle) <= 10) return;
 
         // not all users will accept the recommendation.
-        if(Math.random() > shutdown_acceptance) return;
+        if(Math.random() > this.shutdown_acceptance) return;
 
         //simulate shutting down the vm by reducing the runtime length here.
-        int t_max = (int) (t_full * (u_avg - u_idle) / (u_max - u_idle));
+        int t_max = (int) (t_full * (u_avg - this.u_idle) / (u_max - this.u_idle));
         int t_new_deleted = t_created + t_max;
         vm.setAvg_util(u_max);
         vm.setP95(u_max);
@@ -276,6 +321,6 @@ public class Algorithms {
 
     private static void printDuration(String s)
     {
-        System.out.println("Took " + dft.format((double)(System.nanoTime() - lastStart) / 1e9) + "s to " + s);
+        if(SimMain.fullOutput) System.out.println("Took " + dft.format((double)(System.nanoTime() - lastStart) / 1e9) + "s to " + s);
     }
 }
