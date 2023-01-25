@@ -108,8 +108,8 @@ public class SimMain {
         {
             fullOutput = false;
             int moer_thresh = 810, confidence_thresh = 50, day = 288;
-            double u_idle = 0.01, p95Thresh = 0.8, wasteThresh = 3;
-            Algorithms algos = new Algorithms(moer_thresh, confidence_thresh, p95Thresh, wasteThresh, u_idle);
+            double u_idle = 0.01, p95Thresh = 0.8, wasteThresh = 6;
+            Algorithms algos;
 
             while(true)
             {
@@ -117,28 +117,30 @@ public class SimMain {
 
                 try {
                     if (scan.hasNextInt())
-                        switch (scan.nextInt()) {
+                    {
+                        switch (scan.nextInt())
+                        {
                             case 1:
-                                moer_thresh += scan.nextInt();
+                                moer_thresh = scan.nextInt();
                                 algos = new Algorithms(moer_thresh, confidence_thresh, p95Thresh, wasteThresh, u_idle);
                                 RT_dat = AlgRunner.runCycle("Approach Using Intersections (RT)", algos::runRT, (Vm vm_dat) -> {
                                 }, sim_RT, svm_RT);
                                 break;
                             case 2:
-                                confidence_thresh += scan.nextInt();
+                                confidence_thresh = scan.nextInt();
                                 algos = new Algorithms(moer_thresh, confidence_thresh, p95Thresh, wasteThresh, u_idle);
                                 RA_dat = AlgRunner.runCycle("Approach Using Moving Averages (RA)", algos::runRA, (Vm vm_dat) -> {
                                 }, sim_RA, svm_RA);
 
                                 break;
                             case 3:
-                                p95Thresh += scan.nextInt();
-                                wasteThresh += scan.nextInt();
+                                p95Thresh = scan.nextDouble();
+                                wasteThresh = scan.nextDouble();
                                 algos = new Algorithms(moer_thresh, confidence_thresh, p95Thresh, wasteThresh, u_idle);
                                 core_reduction_dat = AlgRunner.runCycle("Core Reduction Strategy (CR)", () -> new double[]{0, 0}, algos::runCR, sim_CR, svm_CR);
                                 break;
                             case 4:
-                                u_idle += scan.nextInt();
+                                u_idle = scan.nextInt();
                                 algos = new Algorithms(moer_thresh, confidence_thresh, p95Thresh, wasteThresh, u_idle);
                                 shutdown_dat = AlgRunner.runCycle("VM Shutdown Strategy (SD)", () -> new double[]{0, 0}, algos::runSD, sim_SD, svm_SD);
                                 break;
@@ -146,6 +148,7 @@ public class SimMain {
                                 System.out.println("Invalid flag, trying again...");
                                 break;
                         }
+                    }
                     else {
                         boolean br = false;
                         switch (scan.next().charAt(0)) {

@@ -60,6 +60,9 @@ public class Vm {
 	/** CUSTOM. The start time (sec) and end time (sec) of the runtime of this VM. */
 	private int start, end;
 
+	/** CUSTOM. Power of the VM. **/
+	private double power;
+
 	/** The Virtual Machine Monitor (VMM) that manages the VM. */
 	private String vmm;
 
@@ -177,6 +180,7 @@ public class Vm {
 			double max_util,
 			double p95,
 			int start, int end,
+			double power,
 			List<Integer> MOER,
 			List<Integer> PMOER,
 
@@ -202,6 +206,7 @@ public class Vm {
 		this.MOER = MOER;
 		this.PMOER = PMOER;
 		setTime(new int[]{start, end});
+		this.power = power;
 		cloudletScheduler.setVM(this);
 
 		setCurrentAllocatedBw(0);
@@ -736,19 +741,29 @@ public class Vm {
 	 * @return power (watt)
 	 */
 	public double getPower() {
+		return this.power;
+	}
+
+	public void updateLinRegPower()
+	{
+
 		int cores = numberOfPes;
 		int memory = ram / 1000; // divide by 1000 bc MB --> GB
 
 		// Lin. Reg.
 		switch (cores) {
 			case 2:
-				return Math.max(-12.1318 * memory + 42.1 * avg_util + 120.023, 0.0);
+				this.power = Math.max(-12.1318 * memory + 42.1 * avg_util + 120.023, 0.0);
+				break;
 			case 4:
-				return Math.max(-0.792386 * memory + 40.41 * avg_util + 23.2432, 0.0);
+				this.power = Math.max(-0.792386 * memory + 40.41 * avg_util + 23.2432, 0.0);
+				break;
 			case 8:
-				return Math.max(42.1392 * avg_util + 16.6206, 0.0);
+				this.power = Math.max(42.1392 * avg_util + 16.6206, 0.0);
+				break;
 			default:
-				return Math.max(-0.0200128 * memory + 188.199 * avg_util + 112.653, 0.0);
+				this.power = Math.max(-0.0200128 * memory + 188.199 * avg_util + 112.653, 0.0);
+				break;
 		}
 	}
 

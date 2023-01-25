@@ -214,7 +214,8 @@ public class AlgRunner {
             double
                     avgUtil = Double.parseDouble(values[3]) / 100,
                     maxUtil = Double.parseDouble(values[2]) / 100,
-                    p95 = Double.parseDouble(values[4]) / 100;
+                    p95 = Double.parseDouble(values[4]) / 100,
+                    power = Double.parseDouble(values[8]);
             String
                     vmm = "Windows Hyper-V"; // Azure uses this virtual machine manager (hypervisor)
 
@@ -233,6 +234,7 @@ public class AlgRunner {
                     p95,
                     startTime,
                     endTime,
+                    power,
                     MOER,
                     PMOER,
                     new CloudletSchedulerTimeShared());
@@ -499,7 +501,10 @@ public class AlgRunner {
                     "Total money wasted by users: $" + dft.format(lastWaste) + "\n" +
                     "Average postponement of runtime over all VMs: " + dft.format(lastDelay[0]) + " hrs\n" +
                     "Average postponement of postponed VMs: " + dft.format(lastDelay[1]) + " hrs"
-                    : "")
+                    :
+                    "\n" +
+                    "Average postponement of runtime over all VMs: " + dft.format(lastDelay[0]) + " hrs\n" +
+                    "Average postponement of postponed VMs: " + dft.format(lastDelay[1]) + " hrs")
         );
         if(baseResult != null)
             System.out.print("\n" +

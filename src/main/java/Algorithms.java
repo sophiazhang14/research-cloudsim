@@ -286,6 +286,7 @@ public class Algorithms {
         vm.setP95(new_p95);
         vm.setMax_util(new_max_util);
         vm.setAvg_util(new_avg_util);
+        vm.updateLinRegPower();
     }
 
     /**
@@ -309,6 +310,7 @@ public class Algorithms {
         vm.setAvg_util(u_max);
         vm.setP95(u_max);
         vm.setTime(new int[]{t_created, t_new_deleted});
+        vm.updateLinRegPower();
     }
 
 
