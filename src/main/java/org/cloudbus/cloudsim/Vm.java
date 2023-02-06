@@ -752,17 +752,17 @@ public class Vm {
 
 		// Lin. Reg.
 		switch (cores) {
-			case 2:
-				this.power = Math.max(-12.1318 * memory + 42.1 * avg_util + 120.023, 0.0);
+			case 2: //intercept 102.922, util 38.4564, mem -9.76648
+				this.power = Math.max(-9.76648 * memory + 38.4564 * avg_util + 102.922, 0.0);
 				break;
 			case 4:
-				this.power = Math.max(-0.792386 * memory + 40.41 * avg_util + 23.2432, 0.0);
+				this.power = Math.max(-0.767754 * memory + 38.4159 * avg_util + 23.2765, 0.0);
 				break;
 			case 8:
-				this.power = Math.max(42.1392 * avg_util + 16.6206, 0.0);
+				this.power = Math.max(38.4159 * avg_util + 15.5263, 0.0);
 				break;
 			default:
-				this.power = Math.max(-0.0200128 * memory + 188.199 * avg_util + 112.653, 0.0);
+				this.power = Math.max(-0.0502422 * memory + 174.947 * avg_util + 112.429, 0.0);
 				break;
 		}
 	}
